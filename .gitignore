@@ -1,0 +1,13 @@
+# Godot 4+ specific ignores
+.godot/
+/android/
+
+# 개인 기획·진행 문서는 git에 올리지 않는다
+/docs/
+
+# 개인 도구 설정
+/.codex/
+
+# AI 도구 작업 규칙
+/CLAUDE.md
+/AGENTS.md
