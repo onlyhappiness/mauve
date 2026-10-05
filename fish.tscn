@@ -1,6 +1,13 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://fish.gd" id="1_fish"]
+[ext_resource type="Texture2D" uid="uid://c7efyu2pho4c3" path="res://assets/fish/goldfish.png" id="2_goldfish"]
 
 [node name="Fish" type="Node2D"]
 script = ExtResource("1_fish")
+
+[node name="Visual" type="Node2D" parent="."]
+
+[node name="Sprite2D" type="Sprite2D" parent="Visual"]
+texture_filter = 4
+texture = ExtResource("2_goldfish")

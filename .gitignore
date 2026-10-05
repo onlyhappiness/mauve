@@ -11,3 +11,6 @@
 # AI 도구 작업 규칙
 /CLAUDE.md
 /AGENTS.md
+
+# macOS Finder
+.DS_Store

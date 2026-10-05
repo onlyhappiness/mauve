@@ -1,15 +1,8 @@
 extends Node2D
 
-# 꼬리를 포함한 전체 크기. 원점(0, 0)이 물고기의 중심이고 오른쪽을 바라본다.
-const SIZE := Vector2(72, 44)
-
-const BODY_COLOR := Color("ffb38a")  # 살구색 몸통
-const TAIL_COLOR := Color("f59a72")  # 조금 진한 꼬리
-const EYE_COLOR := Color("3d2c2e")
-const EYE_HIGHLIGHT_COLOR := Color.WHITE
-
-const BODY_CENTER := Vector2(9, 0)
-const BODY_RADIUS := Vector2(27, 22)  # 몸통 가로 54, 세로 44
+# 꼬리를 포함한 최대 크기. 원점(0, 0)이 물고기의 중심이고 오른쪽을 바라본다.
+# 이미지는 이 크기 안에 맞춰 표시하고, 어항 이탈 검사도 이 크기를 기준으로 한다.
+const SIZE := Vector2(90, 55)
 
 # 헤엄 설정. 길이는 픽셀, 시간은 초 단위.
 const SPEED_MIN := 35.0
@@ -20,7 +13,7 @@ const MAX_RISE := 90.0  # 한 번에 위아래로 움직이는 최대 거리
 const REST_CHANCE := 0.35
 const REST_TIME_MIN := 1.0
 const REST_TIME_MAX := 3.0
-const TURN_SPEED := 5.0  # 방향을 바꿀 때 scale.x가 1초에 변하는 양
+const TURN_SPEED := 5.0  # 방향을 바꿀 때 Visual.scale.x가 1초에 변하는 양
 const EDGE_MARGIN := 4.0  # 테두리에 딱 붙지 않게 두는 여유
 
 # 개체마다 따로 갖는 이동 상태
@@ -29,9 +22,20 @@ var speed := 0.0
 var rest_left := 0.0
 var facing := 1.0  # 1이면 오른쪽, -1이면 왼쪽
 
+@onready var visual: Node2D = $Visual
+@onready var sprite: Sprite2D = $Visual/Sprite2D
+
 
 func _ready() -> void:
+	_fit_sprite_to_size()
 	_pick_target()
+
+
+# 이미지 해상도와 상관없이 비율을 지키며 SIZE 안에 들어가도록 표시 크기를 맞춘다.
+func _fit_sprite_to_size() -> void:
+	var texture_size := sprite.texture.get_size()
+	var fit := minf(SIZE.x / texture_size.x, SIZE.y / texture_size.y)
+	sprite.scale = Vector2(fit, fit)
 
 
 func _process(delta: float) -> void:
@@ -42,12 +46,12 @@ func _process(delta: float) -> void:
 	else:
 		_swim(delta)
 
-	# scale.x가 1과 -1 사이를 천천히 오가며 몸을 돌리는 것처럼 보이게 한다.
+	# Visual.scale.x가 1과 -1 사이를 천천히 오가며 몸을 돌리는 것처럼 보이게 한다.
 	# 정확히 0이 되면 변환을 되돌릴 수 없으므로 0은 건너뛴다.
-	var next_scale := move_toward(scale.x, facing, TURN_SPEED * delta)
+	var next_scale := move_toward(visual.scale.x, facing, TURN_SPEED * delta)
 	if is_zero_approx(next_scale):
 		next_scale = facing * 0.01
-	scale.x = next_scale
+	visual.scale.x = next_scale
 
 
 func _swim(delta: float) -> void:
@@ -107,27 +111,3 @@ func _fits_in_water(point: Vector2) -> bool:
 			return false
 	return true
 
-
-func _draw() -> void:
-	var half := SIZE / 2
-
-	# 꼬리를 먼저 그려 몸통이 꼬리 뿌리를 덮게 한다.
-	var tail := PackedVector2Array([
-		Vector2(-14, 0),
-		Vector2(-half.x, -16),
-		Vector2(-half.x, 16),
-	])
-	draw_colored_polygon(tail, TAIL_COLOR)
-
-	draw_colored_polygon(_ellipse(BODY_CENTER, BODY_RADIUS), BODY_COLOR)
-
-	draw_circle(Vector2(22, -6), 5, EYE_COLOR)
-	draw_circle(Vector2(23.5, -7.5), 1.6, EYE_HIGHLIGHT_COLOR)
-
-
-func _ellipse(center: Vector2, radius: Vector2, segments: int = 32) -> PackedVector2Array:
-	var points := PackedVector2Array()
-	for i in segments:
-		var angle := TAU * i / segments
-		points.append(center + Vector2(cos(angle) * radius.x, sin(angle) * radius.y))
-	return points
