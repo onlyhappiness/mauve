@@ -3,6 +3,8 @@ extends Node2D
 @onready var close_button: Button = $CloseButton
 @onready var add_button: Button = $AddButton
 @onready var aquarium: Aquarium = $Aquarium
+@onready var always_on_top_button: Button = $AlwaysOnTopButton
+@onready var drag_handle: Control = $DragHandle
 
 
 func _ready() -> void:
@@ -10,7 +12,10 @@ func _ready() -> void:
 	add_button.pressed.connect(_on_add_button_pressed)
 	aquarium.fish_count_changed.connect(_update_add_button)
 	_update_add_button(aquarium.fish_count)
-	_set_click_area(Aquarium.TANK_RECT)
+	always_on_top_button.toggled.connect(_set_always_on_top)
+	_set_always_on_top(always_on_top_button.button_pressed)  # 기본값: 꺼짐
+	drag_handle.gui_input.connect(_on_drag_handle_gui_input)
+	_set_click_area(Aquarium.TANK_RECT, drag_handle.get_rect())
 	_move_to_bottom_right()
 
 
@@ -23,16 +28,33 @@ func _move_to_bottom_right() -> void:
 	DisplayServer.window_set_position(usable.end - window_size)
 
 
-# 지정한 영역만 클릭을 받고, 바깥 투명 여백의 클릭은 뒤쪽 앱으로 넘긴다.
+# 어항과 그 위쪽 손잡이만 클릭을 받고, 바깥 투명 여백의 클릭은 뒤쪽 앱으로 넘긴다.
 # 투명 창에서는 이 영역을 지정하지 않으면 어항 위의 클릭도 뒤로 빠진다(macOS에서 확인).
-func _set_click_area(rect: Rect2) -> void:
+# 다각형은 하나만 지정할 수 있어서, 어항 사각형 위에 손잡이 탭이 튀어나온 모양으로 잇는다.
+func _set_click_area(tank: Rect2, handle: Rect2) -> void:
 	var polygon := PackedVector2Array([
-		rect.position,
-		Vector2(rect.end.x, rect.position.y),
-		rect.end,
-		Vector2(rect.position.x, rect.end.y),
+		tank.position,
+		Vector2(handle.position.x, tank.position.y),
+		handle.position,
+		Vector2(handle.end.x, handle.position.y),
+		Vector2(handle.end.x, tank.position.y),
+		Vector2(tank.end.x, tank.position.y),
+		tank.end,
+		Vector2(tank.position.x, tank.end.y),
 	])
 	DisplayServer.window_set_mouse_passthrough(polygon)
+
+
+# 손잡이를 누르면 macOS 기본 창 끌기로 창을 옮긴다.
+func _on_drag_handle_gui_input(event: InputEvent) -> void:
+	var mouse_event := event as InputEventMouseButton
+	if mouse_event and mouse_event.button_index == MOUSE_BUTTON_LEFT and mouse_event.pressed:
+		DisplayServer.window_start_drag()
+
+
+func _set_always_on_top(enabled: bool) -> void:
+	DisplayServer.window_set_flag(DisplayServer.WINDOW_FLAG_ALWAYS_ON_TOP, enabled)
+	always_on_top_button.text = "항상 위: 켬" if enabled else "항상 위: 끔"
 
 
 func _on_close_button_pressed() -> void:

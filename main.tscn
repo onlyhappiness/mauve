@@ -1,8 +1,15 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://main.gd" id="1_main"]
 [ext_resource type="Script" path="res://aquarium.gd" id="2_aquarium"]
 [ext_resource type="PackedScene" path="res://fish.tscn" id="3_fish"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_handle"]
+bg_color = Color(1, 0.956863, 0.862745, 1)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1_main")
@@ -26,3 +33,28 @@ offset_right = 624.0
 offset_bottom = 462.0
 theme_override_font_sizes/font_size = 22
 text = "추가"
+
+[node name="AlwaysOnTopButton" type="Button" parent="."]
+offset_left = 439.0
+offset_top = 72.0
+offset_right = 569.0
+offset_bottom = 117.0
+theme_override_font_sizes/font_size = 20
+toggle_mode = true
+text = "항상 위: 끔"
+
+[node name="DragHandle" type="Panel" parent="."]
+offset_left = 310.0
+offset_top = 10.0
+offset_right = 410.0
+offset_bottom = 38.0
+mouse_default_cursor_shape = 13
+theme_override_styles/panel = SubResource("StyleBoxFlat_handle")
+
+[node name="Grip" type="ColorRect" parent="DragHandle"]
+offset_left = 30.0
+offset_top = 12.0
+offset_right = 70.0
+offset_bottom = 16.0
+mouse_filter = 2
+color = Color(0.85, 0.78, 0.65, 1)
