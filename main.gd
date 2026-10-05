@@ -1,10 +1,15 @@
 extends Node2D
 
 @onready var close_button: Button = $CloseButton
+@onready var add_button: Button = $AddButton
+@onready var aquarium: Aquarium = $Aquarium
 
 
 func _ready() -> void:
 	close_button.pressed.connect(_on_close_button_pressed)
+	add_button.pressed.connect(_on_add_button_pressed)
+	aquarium.fish_count_changed.connect(_update_add_button)
+	_update_add_button(aquarium.fish_count)
 	_set_click_area(Aquarium.TANK_RECT)
 	_move_to_bottom_right()
 
@@ -33,3 +38,11 @@ func _set_click_area(rect: Rect2) -> void:
 func _on_close_button_pressed() -> void:
 	get_tree().quit()
 
+
+func _on_add_button_pressed() -> void:
+	aquarium.add_fish()
+
+
+func _update_add_button(count: int) -> void:
+	add_button.text = "추가 %d/%d" % [count, Aquarium.MAX_FISH]
+	add_button.disabled = count >= Aquarium.MAX_FISH

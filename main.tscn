@@ -9,9 +9,7 @@ script = ExtResource("1_main")
 
 [node name="Aquarium" type="Node2D" parent="."]
 script = ExtResource("2_aquarium")
-
-[node name="Fish" parent="Aquarium" instance=ExtResource("3_fish")]
-position = Vector2(360, 270)
+fish_scene = ExtResource("3_fish")
 
 [node name="CloseButton" type="Button" parent="."]
 offset_left = 579.0
@@ -20,3 +18,11 @@ offset_right = 624.0
 offset_bottom = 117.0
 theme_override_font_sizes/font_size = 24
 text = "X"
+
+[node name="AddButton" type="Button" parent="."]
+offset_left = 465.0
+offset_top = 420.0
+offset_right = 624.0
+offset_bottom = 462.0
+theme_override_font_sizes/font_size = 22
+text = "추가"
