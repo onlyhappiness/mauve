@@ -14,7 +14,7 @@ const REST_CHANCE := 0.35
 const REST_TIME_MIN := 1.0
 const REST_TIME_MAX := 3.0
 const TURN_SPEED := 5.0  # 방향을 바꿀 때 Visual.scale.x가 1초에 변하는 양
-const EDGE_MARGIN := 4.0  # 테두리에 딱 붙지 않게 두는 여유
+const EDGE_MARGIN := 4.0  # 유리·모래에 딱 붙지 않게 두는 여유
 
 # 개체마다 따로 갖는 이동 상태
 var target := Vector2.ZERO
@@ -89,9 +89,9 @@ func _pick_target() -> void:
 		facing = signf(target.x - position.x)
 
 
-# 테두리 안쪽의 물 영역
+# 유리 안쪽·모래 위의 헤엄 영역에서 여유만큼 줄인 곳
 func _water_rect() -> Rect2:
-	return Aquarium.TANK_RECT.grow(-(Aquarium.BORDER_WIDTH + EDGE_MARGIN))
+	return Aquarium.swim_area().grow(-EDGE_MARGIN)
 
 
 # 물고기 중심이 point일 때 몸 전체가 둥근 모서리까지 포함한 물 영역 안에 들어가는지 확인한다.
@@ -103,7 +103,7 @@ func _fits_in_water(point: Vector2) -> bool:
 		return false
 
 	# 둥근 모서리 원의 중심들이 이루는 사각형에서 radius 이내인 점만 물 영역이다.
-	var radius := Aquarium.CORNER_RADIUS - Aquarium.BORDER_WIDTH - EDGE_MARGIN
+	var radius := Aquarium.SWIM_CORNER_RADIUS - EDGE_MARGIN
 	var centers := water.grow(-radius)
 	var corners := [body.position, Vector2(body.end.x, body.position.y), body.end, Vector2(body.position.x, body.end.y)]
 	for corner: Vector2 in corners:
