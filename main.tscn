@@ -1,8 +1,10 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://main.gd" id="1_main"]
 [ext_resource type="Script" path="res://aquarium.gd" id="2_aquarium"]
 [ext_resource type="PackedScene" path="res://fish.tscn" id="3_fish"]
+[ext_resource type="Texture2D" path="res://assets/tank/sand.png" id="4_sand"]
+[ext_resource type="Texture2D" path="res://assets/tank/glass.png" id="5_glass"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_handle"]
 bg_color = Color(1, 0.956863, 0.862745, 1)
@@ -17,6 +19,18 @@ script = ExtResource("1_main")
 [node name="Aquarium" type="Node2D" parent="."]
 script = ExtResource("2_aquarium")
 fish_scene = ExtResource("3_fish")
+
+[node name="Sand" type="Sprite2D" parent="Aquarium"]
+texture_filter = 1
+texture = ExtResource("4_sand")
+centered = false
+
+[node name="Fishes" type="Node2D" parent="Aquarium"]
+
+[node name="Glass" type="Sprite2D" parent="Aquarium"]
+texture_filter = 1
+texture = ExtResource("5_glass")
+centered = false
 
 [node name="CloseButton" type="Button" parent="."]
 offset_left = 579.0

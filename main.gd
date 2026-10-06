@@ -1,5 +1,7 @@
 extends Node2D
 
+const CLICK_ARC_STEPS := 8  # 클릭 영역의 둥근 모서리 하나를 나누는 선분 수
+
 @onready var close_button: Button = $CloseButton
 @onready var add_button: Button = $AddButton
 @onready var aquarium: Aquarium = $Aquarium
@@ -15,7 +17,7 @@ func _ready() -> void:
 	always_on_top_button.toggled.connect(_set_always_on_top)
 	_set_always_on_top(always_on_top_button.button_pressed)  # 기본값: 꺼짐
 	drag_handle.gui_input.connect(_on_drag_handle_gui_input)
-	_set_click_area(Aquarium.TANK_RECT, drag_handle.get_rect())
+	_set_click_area(Aquarium.TANK_RECT, Aquarium.CORNER_RADIUS, drag_handle.get_rect())
 	_move_to_bottom_right()
 
 
@@ -30,19 +32,25 @@ func _move_to_bottom_right() -> void:
 
 # 어항과 그 위쪽 손잡이만 클릭을 받고, 바깥 투명 여백의 클릭은 뒤쪽 앱으로 넘긴다.
 # 투명 창에서는 이 영역을 지정하지 않으면 어항 위의 클릭도 뒤로 빠진다(macOS에서 확인).
-# 다각형은 하나만 지정할 수 있어서, 어항 사각형 위에 손잡이 탭이 튀어나온 모양으로 잇는다.
-func _set_click_area(tank: Rect2, handle: Rect2) -> void:
-	var polygon := PackedVector2Array([
-		tank.position,
-		Vector2(handle.position.x, tank.position.y),
-		handle.position,
-		Vector2(handle.end.x, handle.position.y),
-		Vector2(handle.end.x, tank.position.y),
-		Vector2(tank.end.x, tank.position.y),
-		tank.end,
-		Vector2(tank.position.x, tank.end.y),
-	])
+# 다각형은 하나만 지정할 수 있어서, 둥근 어항 외곽 위쪽 가운데에 손잡이 탭이 튀어나온 모양으로 잇는다.
+func _set_click_area(tank: Rect2, radius: float, handle: Rect2) -> void:
+	var polygon := PackedVector2Array()
+	_append_arc(polygon, tank.position + Vector2(radius, radius), radius, 180.0)  # 왼쪽 위
+	polygon.append(Vector2(handle.position.x, tank.position.y))
+	polygon.append(handle.position)
+	polygon.append(Vector2(handle.end.x, handle.position.y))
+	polygon.append(Vector2(handle.end.x, tank.position.y))
+	_append_arc(polygon, Vector2(tank.end.x - radius, tank.position.y + radius), radius, 270.0)  # 오른쪽 위
+	_append_arc(polygon, tank.end - Vector2(radius, radius), radius, 0.0)  # 오른쪽 아래
+	_append_arc(polygon, Vector2(tank.position.x + radius, tank.end.y - radius), radius, 90.0)  # 왼쪽 아래
 	DisplayServer.window_set_mouse_passthrough(polygon)
+
+
+# start_degrees부터 시계 방향으로 90도 호의 점들을 덧붙인다(화면 좌표는 y가 아래로 증가).
+func _append_arc(polygon: PackedVector2Array, center: Vector2, radius: float, start_degrees: float) -> void:
+	for i in CLICK_ARC_STEPS + 1:
+		var angle := deg_to_rad(start_degrees + 90.0 * i / CLICK_ARC_STEPS)
+		polygon.append(center + Vector2(cos(angle), sin(angle)) * radius)
 
 
 # 손잡이를 누르면 macOS 기본 창 끌기로 창을 옮긴다.
