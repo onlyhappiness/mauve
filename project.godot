@@ -26,6 +26,10 @@ window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 window/per_pixel_transparency/allowed=true
 
+[gui]
+
+timers/tooltip_delay_sec=0.25
+
 [physics]
 
 3d/physics_engine="Jolt Physics"
@@ -36,7 +40,3 @@ rendering_device/driver.windows="d3d12"
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 viewport/transparent_background=true
-
-[gui]
-
-timers/tooltip_delay_sec=0.25
