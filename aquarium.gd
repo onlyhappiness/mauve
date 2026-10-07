@@ -37,7 +37,6 @@ func _ready() -> void:
 	for layer: Sprite2D in [sand, glass]:
 		layer.position = TANK_RECT.position
 		layer.scale = Vector2.ONE * PIXEL_SCALE
-	add_fish()
 
 
 # 물고기가 헤엄칠 수 있는 영역: 유리 안쪽에서 바닥 모래 높이를 뺀 곳. 모서리는 SWIM_CORNER_RADIUS로 둥글다.
@@ -48,18 +47,27 @@ static func swim_area() -> Rect2:
 
 
 # 생성 경로를 한곳으로 모아 버튼 이외의 호출에서도 최대 마릿수를 지킨다.
-func add_fish() -> bool:
+# start가 헤엄 영역 밖이면(기본값 포함) 어항 가운데에서 시작한다.
+func add_fish(start := Vector2.ZERO) -> bool:
 	if fish_count >= MAX_FISH:
 		return false
 
 	var fish := fish_scene.instantiate() as Node2D
 	# _ready()에서 목적지를 고르기 전에 안전한 시작 위치를 설정한다.
-	fish.position = TANK_RECT.get_center()
+	fish.position = start if fish._fits_in_water(start) else TANK_RECT.get_center()
 	# 모래(Sand)와 유리(Glass) 사이의 Fishes에 넣어 유리 반사가 물고기 위에 오게 한다.
 	fishes.add_child(fish)
 	fish_count += 1
 	fish_count_changed.emit(fish_count)
 	return true
+
+
+# 저장용 물고기 목록. 지금은 금붕어 한 종류뿐이다.
+func fish_states() -> Array:
+	var states := []
+	for fish: Node2D in fishes.get_children():
+		states.append({"kind": "goldfish", "x": fish.position.x, "y": fish.position.y})
+	return states
 
 
 # 물 → Sand → Fishes → Glass 순서로 보인다. 물은 노드 자신이 가장 먼저 그린다.
