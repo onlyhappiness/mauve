@@ -4,6 +4,7 @@ const CLICK_ARC_STEPS := 8  # 클릭 영역의 둥근 모서리 하나를 나누
 const PIN_ICON := preload("res://assets/ui/pin.svg")
 const PIN_FILLED_ICON := preload("res://assets/ui/pin_filled.svg")
 const ADD_MIN_WIDTH := 140.0
+const WINDOW_CHECK_INTERVAL := 1.0  # 창을 옮겼는지 살피는 간격(초)
 
 @onready var aquarium: Aquarium = $Aquarium
 @onready var ui: Control = $UI
@@ -16,8 +17,16 @@ const ADD_MIN_WIDTH := 140.0
 @onready var add_content: Control = $UI/Dock/AddButton/Content
 @onready var add_count: Label = $UI/Dock/AddButton/Content/Count
 
+var saved_window_position := Vector2i.ZERO  # 마지막으로 저장한 창 위치
+var checked_window_position := Vector2i.ZERO  # 직전에 살펴본 창 위치
+
 
 func _ready() -> void:
+	var data := SaveData.load_data()
+	for fish: Dictionary in data["fish"]:
+		aquarium.add_fish(Vector2(fish["x"], fish["y"]))
+	always_on_top_button.set_pressed_no_signal(data["always_on_top"])
+
 	ui.theme = WidgetTheme.build()
 	close_button.pressed.connect(_on_close_button_pressed)
 	add_button.pressed.connect(_on_add_button_pressed)
@@ -27,12 +36,59 @@ func _ready() -> void:
 	aquarium.fish_count_changed.connect(_update_add_button)
 	_update_add_button(aquarium.fish_count)
 	always_on_top_button.toggled.connect(_set_always_on_top)
-	_set_always_on_top(always_on_top_button.button_pressed)  # 기본값: 꺼짐
+	_set_always_on_top(always_on_top_button.button_pressed)
 	drag_handle.gui_input.connect(_on_drag_handle_gui_input)
 	drag_handle.mouse_entered.connect(_set_drag_handle_hover.bind(true))
 	drag_handle.mouse_exited.connect(_set_drag_handle_hover.bind(false))
 	# 아래 버튼 묶음은 글자 폭에 따라 크기가 정해지므로, 배치가 끝날 때마다 클릭 영역을 다시 잡는다.
 	dock.sort_children.connect(_update_click_area)
+	_place_window(data["window"])
+	saved_window_position = DisplayServer.window_get_position()
+	checked_window_position = saved_window_position
+
+	# 불러오기가 끝난 뒤에 연결해서, 복원 중에는 저장하지 않는다.
+	aquarium.fish_count_changed.connect(_save.unbind(1))
+	always_on_top_button.toggled.connect(_save.unbind(1))
+	var window_check := Timer.new()
+	window_check.wait_time = WINDOW_CHECK_INTERVAL
+	window_check.timeout.connect(_check_window_moved)
+	add_child(window_check)
+	window_check.start()
+
+
+# Cmd+Q 등으로 창을 닫을 때도 저장한다.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		_save()
+
+
+func _save() -> void:
+	saved_window_position = DisplayServer.window_get_position()
+	SaveData.save({
+		"always_on_top": always_on_top_button.button_pressed,
+		"window": {"x": saved_window_position.x, "y": saved_window_position.y},
+		"fish": aquarium.fish_states(),
+	})
+
+
+# 창 끌기는 macOS가 처리해서 끝났다는 신호가 없다. 위치가 바뀐 뒤 한 번 더 살폈을 때도
+# 그대로이면 끌기를 마친 것으로 보고 저장한다.
+func _check_window_moved() -> void:
+	var window_position := DisplayServer.window_get_position()
+	if window_position != saved_window_position and window_position == checked_window_position:
+		_save()
+	checked_window_position = window_position
+
+
+# 저장한 위치가 지금 연결된 화면 안에 있으면 그곳에, 아니면 오른쪽 아래에 둔다.
+func _place_window(saved: Variant) -> void:
+	if saved is Dictionary:
+		var window_position := Vector2i(saved["x"], saved["y"])
+		var center := window_position + DisplayServer.window_get_size() / 2
+		for screen in DisplayServer.get_screen_count():
+			if DisplayServer.screen_get_usable_rect(screen).has_point(center):
+				DisplayServer.window_set_position(window_position)
+				return
 	_move_to_bottom_right()
 
 
@@ -109,6 +165,7 @@ func _set_always_on_top(enabled: bool) -> void:
 
 
 func _on_close_button_pressed() -> void:
+	_save()
 	get_tree().quit()
 
 
