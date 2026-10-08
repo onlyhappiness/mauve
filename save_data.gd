@@ -63,7 +63,11 @@ static func save(data: Dictionary) -> bool:
 		return false
 
 	if FileAccess.file_exists(path):
-		DirAccess.copy_absolute(path, folder.path_join(BACKUP_NAME))
+		var backup_error := DirAccess.copy_absolute(path, folder.path_join(BACKUP_NAME))
+		if backup_error != OK:
+			push_warning("백업 생성 실패: %s. 기존 저장 파일을 유지합니다." % error_string(backup_error))
+			DirAccess.remove_absolute(temp)
+			return false
 	var error := DirAccess.rename_absolute(temp, path)
 	if error != OK:
 		push_warning("저장 실패: %s" % error_string(error))
