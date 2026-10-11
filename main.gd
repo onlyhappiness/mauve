@@ -132,7 +132,7 @@ func _update_click_area() -> void:
 # 모서리 바깥 투명 부분은 클릭을 받지 않게 한다.
 # 현재 UI와 Aquarium은 창 좌표와 같은 원점·배율을 쓰며, 손잡이는 어항 위쪽 직선 구간에 있다.
 # 오른쪽 버튼 묶음은 각각 어항 위·아래에 있고 오른쪽 끝은 어항 끝 안쪽에 있어야 한다.
-# 상점 패널(y 45~525)도 위쪽 컨트롤(y 2~44) 아래에서 시작하고 손잡이는 패널 위쪽 직선 구간에 있다.
+# 상점 패널은 어항 영역(TANK_RECT)과 같은 자리·크기로 어항을 덮고, 위쪽 컨트롤(y 2~44) 아래에서 시작하며 손잡이는 패널 위쪽 직선 구간에 있다.
 # 위치·배율 변경이나 상점 패널 추가 시 이 연결 순서를 재검토하고 실제 창에서 클릭 통과를 확인한다.
 func _click_area(tank: Rect2, radius: float, handle: Rect2, top_right: Rect2, bottom_right: Rect2) -> PackedVector2Array:
 	var polygon := PackedVector2Array()

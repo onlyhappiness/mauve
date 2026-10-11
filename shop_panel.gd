@@ -1,7 +1,7 @@
 class_name ShopPanel
 extends Panel
 
-# 어항을 덮는 상점 패널(640×480). 진주로 물고기를 사고판다.
+# 어항을 덮는 상점 패널(어항 영역과 같은 680×510). 진주로 물고기를 사고판다.
 # 배치·색은 OpenDesign 상점 시안(DESIGN.md)을 따르고, 안쪽 노드는 _build()에서 코드로 만든다.
 # 수초·어항 탭은 D08·D09 범위라 아직 고를 수 없다.
 
@@ -396,6 +396,7 @@ func _build_detail() -> Control:
 	column.add_child(_detail_name)
 	_description = _label("", &"Description")
 	_description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_description.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	_description.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	column.add_child(_description)
 

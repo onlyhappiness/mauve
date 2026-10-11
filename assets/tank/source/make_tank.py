@@ -1,10 +1,10 @@
-# 어항 유리·모래 이미지를 300×225칸 픽셀 격자로 다시 그린다 (D05-1).
+# 어항 유리·모래 이미지를 340×255칸 픽셀 격자로 다시 그린다 (D05-1, D05-5에서 300×225칸에서 키움).
 #
 # ChatGPT 원본(glass.png·sand.png)은 한 칸이 금붕어의 약 2배이고 외형이 4:3이 아니어서,
 # 원본의 띠 색·순서·반사 위치·모래 윤곽을 따라 금붕어와 같은 격자(한 칸 = 2 게임 픽셀)로 새로 그린다.
 #
 # 실행: uv run --with pillow python assets/tank/source/make_tank.py
-# 결과: assets/tank/glass.png, assets/tank/sand.png (300×225, 게임에서 2배·Nearest로 표시)
+# 결과: assets/tank/glass.png, assets/tank/sand.png (340×255, 게임에서 2배·Nearest로 표시)
 
 import math
 from pathlib import Path
@@ -14,7 +14,7 @@ from PIL import Image
 HERE = Path(__file__).resolve().parent
 OUT = HERE.parent
 
-W, H = 300, 225  # 어항 외곽 = 캔버스 전체
+W, H = 340, 255  # 어항 외곽 = 캔버스 전체. 2026-10-11 사용자 요청으로 300×225에서 키웠다(물고기·버튼 크기는 그대로).
 RADIUS = 28  # 바깥 모서리 반경(칸)
 # 유리 띠 두께(칸, 바깥 → 안쪽). 2026-10-06 사용자 요청으로 원본 비율(2·2·2·2)보다 얇게 했다.
 # 외곽선은 금붕어 외곽선과 같은 한 칸이다.
