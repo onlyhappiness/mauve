@@ -1,16 +1,18 @@
 class_name SaveData
 extends RefCounted
 
-# 물고기 목록·창 위치·항상 위 설정을 JSON 파일 하나에 저장하고 불러온다.
+# 진주·물고기 목록·창 위치·항상 위 설정을 JSON 파일 하나에 저장하고 불러온다.
 # 저장 형식(VERSION 1):
-# {"version": 1, "always_on_top": false, "window": {"x": 0, "y": 0}, "fish": [{"kind": "goldfish", "x": 360, "y": 270}]}
+# {"version": 1, "pearls": 100, "always_on_top": false, "window": {"x": 0, "y": 0}, "fish": [{"kind": "goldfish", "x": 360, "y": 270}]}
 # "window"가 없으면 창을 기본 위치(화면 오른쪽 아래)에 둔다.
+# "pearls"가 없는 파일(상점 이전 저장)은 진주 0으로 불러온다. 시작 진주는 새로 시작할 때만 준다.
 
 const VERSION := 1
 const FILE_NAME := "save.json"
 const BACKUP_NAME := "save.bak.json"  # 직전에 정상이던 파일
 const TEMP_NAME := "save.tmp.json"  # 다 쓴 뒤 FILE_NAME으로 바꾼다
 const FISH_KINDS: Array[String] = ["goldfish"]
+const START_PEARLS := 100
 
 # 저장 폴더. 헤드리스 점검에서만 다른 폴더로 바꾼다.
 static var folder := "user://"
@@ -20,6 +22,7 @@ static var folder := "user://"
 static func defaults() -> Dictionary:
 	return {
 		"version": VERSION,
+		"pearls": START_PEARLS,
 		"always_on_top": false,
 		"window": null,
 		"fish": [{"kind": FISH_KINDS[0], "x": 0.0, "y": 0.0}],  # 위치 (0, 0)은 어항 밖이라 가운데에서 시작한다
@@ -85,6 +88,8 @@ static func _read(path: String) -> Variant:
 		return null
 
 	var data := defaults()
+	var pearls = parsed.get("pearls")
+	data["pearls"] = maxi(int(pearls), 0) if pearls is float else 0
 	if parsed.get("always_on_top") is bool:
 		data["always_on_top"] = parsed["always_on_top"]
 

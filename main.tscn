@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://main.gd" id="1_main"]
 [ext_resource type="Script" path="res://aquarium.gd" id="2_aquarium"]
@@ -9,7 +9,7 @@
 [ext_resource type="Texture2D" path="res://assets/ui/pin.svg" id="7_pin"]
 [ext_resource type="Texture2D" path="res://assets/ui/close.svg" id="8_close"]
 [ext_resource type="Texture2D" path="res://assets/ui/shop.svg" id="9_shop"]
-[ext_resource type="Texture2D" path="res://assets/ui/plus.svg" id="10_plus"]
+[ext_resource type="Script" path="res://shop_panel.gd" id="10_shop_panel"]
 
 
 [node name="Main" type="Node2D"]
@@ -99,46 +99,11 @@ focus_mode = 0
 text = "상점"
 icon = ExtResource("9_shop")
 
-[node name="AddButton" type="Button" parent="UI/Dock"]
-custom_minimum_size = Vector2(140, 40)
-layout_mode = 2
-focus_mode = 0
-theme_type_variation = &"AccentButton"
-
-[node name="Content" type="HBoxContainer" parent="UI/Dock/AddButton"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 10.0
-offset_right = -14.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-theme_override_constants/separation = 8
-alignment = 1
-
-[node name="Icon" type="TextureRect" parent="UI/Dock/AddButton/Content"]
-layout_mode = 2
-mouse_filter = 2
-texture = ExtResource("10_plus")
-stretch_mode = 3
-
-[node name="Label" type="Label" parent="UI/Dock/AddButton/Content"]
-layout_mode = 2
-theme_type_variation = &"ButtonLabel"
-text = "추가"
-vertical_alignment = 1
-
-[node name="Divider" type="ColorRect" parent="UI/Dock/AddButton/Content"]
-custom_minimum_size = Vector2(2, 22)
-layout_mode = 2
-size_flags_vertical = 4
-mouse_filter = 2
-color = Color(1, 1, 1, 0.45)
-
-[node name="Count" type="Label" parent="UI/Dock/AddButton/Content"]
-layout_mode = 2
-theme_type_variation = &"CountLabel"
-text = "0/5"
-vertical_alignment = 1
+[node name="ShopPanel" type="Panel" parent="UI"]
+visible = false
+layout_mode = 0
+offset_left = 40.0
+offset_top = 45.0
+offset_right = 680.0
+offset_bottom = 525.0
+script = ExtResource("10_shop_panel")

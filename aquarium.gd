@@ -62,6 +62,20 @@ func add_fish(start := Vector2.ZERO) -> bool:
 	return true
 
 
+# 가장 나중에 넣은 물고기를 뺀다. 마지막 한 마리를 남기는 규칙은 상점(ShopPanel)이 지킨다.
+func remove_fish() -> bool:
+	if fish_count == 0:
+		return false
+
+	var fish := fishes.get_child(fishes.get_child_count() - 1)
+	# queue_free()만 하면 이번 프레임의 저장(fish_states)에 남으므로 먼저 떼어 낸다.
+	fishes.remove_child(fish)
+	fish.queue_free()
+	fish_count -= 1
+	fish_count_changed.emit(fish_count)
+	return true
+
+
 # 저장용 물고기 목록. 지금은 금붕어 한 종류뿐이다.
 func fish_states() -> Array:
 	var states := []
