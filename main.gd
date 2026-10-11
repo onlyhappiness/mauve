@@ -19,6 +19,7 @@ const WINDOW_CHECK_INTERVAL := 1.0  # 창을 옮겼는지 살피는 간격(초)
 
 var saved_window_position := Vector2i.ZERO  # 마지막으로 저장한 창 위치
 var checked_window_position := Vector2i.ZERO  # 직전에 살펴본 창 위치
+var save_pending := false  # 마지막 저장이 실패해 다시 시도해야 하는지
 
 
 func _ready() -> void:
@@ -63,19 +64,25 @@ func _notification(what: int) -> void:
 
 
 func _save() -> void:
-	saved_window_position = DisplayServer.window_get_position()
-	SaveData.save({
+	var window_position := DisplayServer.window_get_position()
+	var saved := SaveData.save({
 		"always_on_top": always_on_top_button.button_pressed,
-		"window": {"x": saved_window_position.x, "y": saved_window_position.y},
+		"window": {"x": window_position.x, "y": window_position.y},
 		"fish": aquarium.fish_states(),
 	})
+	# 실패하면 창 위치와 상관없이 다음 위치 검사에서 다시 시도한다.
+	# 매번 현재 상태 전체를 쓰므로 한 번 성공하면 밀린 변경이 모두 반영된다.
+	save_pending = not saved
+	if saved:
+		saved_window_position = window_position
 
 
 # 창 끌기는 macOS가 처리해서 끝났다는 신호가 없다. 위치가 바뀐 뒤 한 번 더 살폈을 때도
-# 그대로이면 끌기를 마친 것으로 보고 저장한다.
+# 그대로이면 끌기를 마친 것으로 보고 저장한다. 직전 저장이 실패했으면 여기서 다시 시도한다.
 func _check_window_moved() -> void:
 	var window_position := DisplayServer.window_get_position()
-	if window_position != saved_window_position and window_position == checked_window_position:
+	var moved := window_position != saved_window_position and window_position == checked_window_position
+	if save_pending or moved:
 		_save()
 	checked_window_position = window_position
 
