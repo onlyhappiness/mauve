@@ -3,7 +3,6 @@ extends Node2D
 const CLICK_ARC_STEPS := 8  # 클릭 영역의 둥근 모서리 하나를 나누는 선분 수
 const PIN_ICON := preload("res://assets/ui/pin.svg")
 const PIN_FILLED_ICON := preload("res://assets/ui/pin_filled.svg")
-const ADD_MIN_WIDTH := 140.0
 const WINDOW_CHECK_INTERVAL := 1.0  # 창을 옮겼는지 살피는 간격(초)
 
 @onready var aquarium: Aquarium = $Aquarium
@@ -13,9 +12,7 @@ const WINDOW_CHECK_INTERVAL := 1.0  # 창을 옮겼는지 살피는 간격(초)
 @onready var close_button: Button = $UI/CloseButton
 @onready var dock: HBoxContainer = $UI/Dock
 @onready var shop_button: Button = $UI/Dock/ShopButton
-@onready var add_button: Button = $UI/Dock/AddButton
-@onready var add_content: Control = $UI/Dock/AddButton/Content
-@onready var add_count: Label = $UI/Dock/AddButton/Content/Count
+@onready var shop_panel: ShopPanel = $UI/ShopPanel
 
 var saved_window_position := Vector2i.ZERO  # 마지막으로 저장한 창 위치
 var checked_window_position := Vector2i.ZERO  # 직전에 살펴본 창 위치
@@ -27,15 +24,12 @@ func _ready() -> void:
 	for fish: Dictionary in data["fish"]:
 		aquarium.add_fish(Vector2(fish["x"], fish["y"]))
 	always_on_top_button.set_pressed_no_signal(data["always_on_top"])
+	shop_panel.setup(aquarium, data["pearls"])
 
 	ui.theme = WidgetTheme.build()
 	close_button.pressed.connect(_on_close_button_pressed)
-	add_button.pressed.connect(_on_add_button_pressed)
-	# 마우스 출입 시그널은 내부 상태 갱신 전에 발생할 수 있으므로, 갱신 후 내용 위치를 맞춘다.
-	for state_signal in [add_button.button_down, add_button.button_up, add_button.mouse_entered, add_button.mouse_exited]:
-		state_signal.connect(_sync_add_content_position, CONNECT_DEFERRED)
-	aquarium.fish_count_changed.connect(_update_add_button)
-	_update_add_button(aquarium.fish_count)
+	shop_button.pressed.connect(_set_shop_open.bind(true))
+	shop_panel.closed.connect(_set_shop_open.bind(false))
 	always_on_top_button.toggled.connect(_set_always_on_top)
 	_set_always_on_top(always_on_top_button.button_pressed)
 	drag_handle.gui_input.connect(_on_drag_handle_gui_input)
@@ -48,7 +42,7 @@ func _ready() -> void:
 	checked_window_position = saved_window_position
 
 	# 불러오기가 끝난 뒤에 연결해서, 복원 중에는 저장하지 않는다.
-	aquarium.fish_count_changed.connect(_save.unbind(1))
+	shop_panel.changed.connect(_save)
 	always_on_top_button.toggled.connect(_save.unbind(1))
 	var window_check := Timer.new()
 	window_check.wait_time = WINDOW_CHECK_INTERVAL
@@ -66,6 +60,7 @@ func _notification(what: int) -> void:
 func _save() -> void:
 	var window_position := DisplayServer.window_get_position()
 	var saved := SaveData.save({
+		"pearls": shop_panel.pearls,
 		"always_on_top": always_on_top_button.button_pressed,
 		"window": {"x": window_position.x, "y": window_position.y},
 		"fish": aquarium.fish_states(),
@@ -108,25 +103,38 @@ func _move_to_bottom_right() -> void:
 	DisplayServer.window_set_position(usable.end - window_size)
 
 
+# 상점 패널은 어항과 아래 버튼 묶음을 덮는다. 손잡이·항상 위·닫기는 패널 위쪽에 그대로 둔다.
+func _set_shop_open(open: bool) -> void:
+	if open:
+		shop_panel.open()
+	dock.visible = not open
+	_update_click_area()
+
+
 func _update_click_area() -> void:
 	var top_buttons := always_on_top_button.get_rect().merge(close_button.get_rect())
-	var bottom_buttons := shop_button.get_global_rect().merge(add_button.get_global_rect())
 	# 버튼 아래 그림자까지 클릭을 받게 한다.
 	top_buttons.size.y += WidgetTheme.SHADOW_OFFSET
+	if shop_panel.visible:
+		DisplayServer.window_set_mouse_passthrough(_click_area(shop_panel.get_rect(), ShopPanel.RADIUS, drag_handle.get_rect(), top_buttons, Rect2()))
+		return
+	var bottom_buttons := shop_button.get_global_rect()
 	bottom_buttons.size.y += WidgetTheme.SHADOW_OFFSET
-	_set_click_area(Aquarium.TANK_RECT, Aquarium.CORNER_RADIUS, drag_handle.get_rect(), top_buttons, bottom_buttons)
+	DisplayServer.window_set_mouse_passthrough(_click_area(Aquarium.TANK_RECT, Aquarium.CORNER_RADIUS, drag_handle.get_rect(), top_buttons, bottom_buttons))
 
 
 # 어항과 바깥 여백의 컨트롤만 클릭을 받고, 나머지 투명 여백의 클릭은 뒤쪽 앱으로 넘긴다.
 # 투명 창에서는 이 영역을 지정하지 않으면 어항 위의 클릭도 뒤로 빠진다(macOS에서 확인).
 # 다각형은 하나만 지정할 수 있어서, 둥근 어항 외곽에 컨트롤 자리가 탭처럼 튀어나온 모양으로 잇는다.
-# 위: 가운데 손잡이, 오른쪽 위 버튼(항상 위·닫기). 아래: 오른쪽 버튼 묶음(상점·추가).
+# 위: 가운데 손잡이, 오른쪽 위 버튼(항상 위·닫기). 아래: 오른쪽 버튼 묶음(상점). 크기가 없으면 아래 탭은 넣지 않는다.
+# 상점을 열면 어항 대신 상점 패널 외곽(모서리 28)에 같은 위쪽 탭을 붙인다.
 # 오른쪽 탭은 어항 둥근 모서리 위·아래에 걸치므로, 탭 끝에서 모서리 호의 시작·끝점으로 바로 이어
 # 모서리 바깥 투명 부분은 클릭을 받지 않게 한다.
 # 현재 UI와 Aquarium은 창 좌표와 같은 원점·배율을 쓰며, 손잡이는 어항 위쪽 직선 구간에 있다.
 # 오른쪽 버튼 묶음은 각각 어항 위·아래에 있고 오른쪽 끝은 어항 끝 안쪽에 있어야 한다.
+# 상점 패널은 어항 영역(TANK_RECT)과 같은 자리·크기로 어항을 덮고, 위쪽 컨트롤(y 2~44) 아래에서 시작하며 손잡이는 패널 위쪽 직선 구간에 있다.
 # 위치·배율 변경이나 상점 패널 추가 시 이 연결 순서를 재검토하고 실제 창에서 클릭 통과를 확인한다.
-func _set_click_area(tank: Rect2, radius: float, handle: Rect2, top_right: Rect2, bottom_right: Rect2) -> void:
+func _click_area(tank: Rect2, radius: float, handle: Rect2, top_right: Rect2, bottom_right: Rect2) -> PackedVector2Array:
 	var polygon := PackedVector2Array()
 	_append_arc(polygon, tank.position + Vector2(radius, radius), radius, 180.0)  # 왼쪽 위
 	polygon.append(Vector2(handle.position.x, tank.position.y))
@@ -139,12 +147,13 @@ func _set_click_area(tank: Rect2, radius: float, handle: Rect2, top_right: Rect2
 	polygon.append(top_right.end)
 	_append_arc(polygon, Vector2(tank.end.x - radius, tank.position.y + radius), radius, 270.0)  # 오른쪽 위
 	_append_arc(polygon, tank.end - Vector2(radius, radius), radius, 0.0)  # 오른쪽 아래
-	polygon.append(Vector2(bottom_right.end.x, bottom_right.position.y))
-	polygon.append(bottom_right.end)
-	polygon.append(Vector2(bottom_right.position.x, bottom_right.end.y))
-	polygon.append(bottom_right.position)
+	if bottom_right.has_area():
+		polygon.append(Vector2(bottom_right.end.x, bottom_right.position.y))
+		polygon.append(bottom_right.end)
+		polygon.append(Vector2(bottom_right.position.x, bottom_right.end.y))
+		polygon.append(bottom_right.position)
 	_append_arc(polygon, Vector2(tank.position.x + radius, tank.end.y - radius), radius, 90.0)  # 왼쪽 아래
-	DisplayServer.window_set_mouse_passthrough(polygon)
+	return polygon
 
 
 # start_degrees부터 시계 방향으로 90도 호의 점들을 덧붙인다(화면 좌표는 y가 아래로 증가).
@@ -174,24 +183,3 @@ func _set_always_on_top(enabled: bool) -> void:
 func _on_close_button_pressed() -> void:
 	_save()
 	get_tree().quit()
-
-
-func _on_add_button_pressed() -> void:
-	aquarium.add_fish()
-
-
-# 자식 내용도 버튼 배경의 실제 그리기 상태를 따른다. 누른 채 밖으로 나가면 정상 위치로 돌아간다.
-func _sync_add_content_position() -> void:
-	var draw_mode := add_button.get_draw_mode()
-	var pressed := draw_mode == BaseButton.DRAW_PRESSED or draw_mode == BaseButton.DRAW_HOVER_PRESSED
-	add_content.position.y = WidgetTheme.SHADOW_OFFSET if pressed else 0.0
-
-
-func _update_add_button(count: int) -> void:
-	add_count.text = "%d/%d" % [count, Aquarium.MAX_FISH]
-	add_button.disabled = count >= Aquarium.MAX_FISH
-	_sync_add_content_position()
-	add_button.tooltip_text = "어항이 가득 찼어요" if add_button.disabled else ""
-	add_content.modulate = WidgetTheme.DISABLED_FG if add_button.disabled else Color.WHITE
-	# 버튼은 자식 내용 크기를 따라 커지지 않으므로 폭을 직접 맞춘다(왼쪽 여백 10 + 오른쪽 14).
-	add_button.custom_minimum_size.x = maxf(ADD_MIN_WIDTH, add_content.get_combined_minimum_size().x + 24.0)

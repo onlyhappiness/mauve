@@ -4,7 +4,7 @@ extends Node2D
 signal fish_count_changed(count: int)
 
 # 어항이 차지하는 영역(창 기준 논리 픽셀). 이 바깥은 투명하게 남는다.
-const TANK_RECT := Rect2(60, 45, 600, 450)
+const TANK_RECT := Rect2(60, 45, 680, 510)
 const MAX_FISH := 5
 
 # 픽셀 아트 한 칸이 차지하는 게임 픽셀. 유리·모래 이미지를 이 배율로 표시한다.
@@ -13,7 +13,7 @@ const PIXEL_SCALE := 2
 # 유리·모래 이미지(assets/tank/)에 맞춘 값. 이미지를 바꾸면 함께 고친다.
 const GLASS_WIDTH := 12  # 유리 두께 6칸
 const CORNER_RADIUS := 56  # 바깥 모서리 반경 28칸
-const SAND_HEIGHT := 22  # 가운데 구간 모래의 가장 높은 곳 11칸. 양 끝은 둥근 모서리 안에 있다.
+const SAND_HEIGHT := 26  # 가운데 구간 모래의 가장 높은 곳 13칸. 양 끝은 둥근 모서리 안에 있다.
 const SWIM_CORNER_RADIUS := CORNER_RADIUS - GLASS_WIDTH  # 헤엄 영역(swim_area) 모서리 반경
 
 # 물은 코드로 그린다. 위·가운데·아래 세 색 사이를 WATER_STEP마다 조금씩 바꿔
@@ -33,7 +33,7 @@ var fish_count := 0
 
 
 func _ready() -> void:
-	# 유리·모래 이미지는 캔버스 전체가 어항 외곽(300×225칸)이다.
+	# 유리·모래 이미지는 캔버스 전체가 어항 외곽(340×255칸)이다.
 	for layer: Sprite2D in [sand, glass]:
 		layer.position = TANK_RECT.position
 		layer.scale = Vector2.ONE * PIXEL_SCALE
@@ -58,6 +58,20 @@ func add_fish(start := Vector2.ZERO) -> bool:
 	# 모래(Sand)와 유리(Glass) 사이의 Fishes에 넣어 유리 반사가 물고기 위에 오게 한다.
 	fishes.add_child(fish)
 	fish_count += 1
+	fish_count_changed.emit(fish_count)
+	return true
+
+
+# 가장 나중에 넣은 물고기를 뺀다. 마지막 한 마리를 남기는 규칙은 상점(ShopPanel)이 지킨다.
+func remove_fish() -> bool:
+	if fish_count == 0:
+		return false
+
+	var fish := fishes.get_child(fishes.get_child_count() - 1)
+	# queue_free()만 하면 이번 프레임의 저장(fish_states)에 남으므로 먼저 떼어 낸다.
+	fishes.remove_child(fish)
+	fish.queue_free()
+	fish_count -= 1
 	fish_count_changed.emit(fish_count)
 	return true
 
