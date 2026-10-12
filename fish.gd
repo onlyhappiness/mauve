@@ -1,3 +1,4 @@
+class_name Fish
 extends Node2D
 
 # 꼬리를 포함한 최대 크기. 원점(0, 0)이 물고기의 중심이고 오른쪽을 바라본다.
@@ -21,6 +22,9 @@ var target := Vector2.ZERO
 var speed := 0.0
 var rest_left := 0.0
 var facing := 1.0  # 1이면 오른쪽, -1이면 왼쪽
+# 헤엄 영역과 모서리 반경. 기본은 어항이고, 화면 전체 장면(Screen)은 넣기 전에 바꾼다.
+var water := Aquarium.swim_area()
+var corner_radius := float(Aquarium.SWIM_CORNER_RADIUS)
 
 @onready var visual: Node2D = $Visual
 @onready var sprite: Sprite2D = $Visual/Sprite2D
@@ -89,9 +93,9 @@ func _pick_target() -> void:
 		facing = signf(target.x - position.x)
 
 
-# 유리 안쪽·모래 위의 헤엄 영역에서 여유만큼 줄인 곳
+# 헤엄 영역(water)에서 여유만큼 줄인 곳
 func _water_rect() -> Rect2:
-	return Aquarium.swim_area().grow(-EDGE_MARGIN)
+	return water.grow(-EDGE_MARGIN)
 
 
 # 물고기 중심이 point일 때 몸 전체가 둥근 모서리까지 포함한 물 영역 안에 들어가는지 확인한다.
@@ -103,7 +107,7 @@ func _fits_in_water(point: Vector2) -> bool:
 		return false
 
 	# 둥근 모서리 원의 중심들이 이루는 사각형에서 radius 이내인 점만 물 영역이다.
-	var radius := Aquarium.SWIM_CORNER_RADIUS - EDGE_MARGIN
+	var radius := maxf(corner_radius - EDGE_MARGIN, 0.0)
 	var centers := water.grow(-radius)
 	var corners := [body.position, Vector2(body.end.x, body.position.y), body.end, Vector2(body.position.x, body.end.y)]
 	for corner: Vector2 in corners:
