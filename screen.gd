@@ -4,13 +4,19 @@ extends Node2D
 # 화면 전체 아쿠아리움. 주 모니터에서 메뉴 막대·Dock을 뺀 영역을 투명 창으로 덮고
 # 그 안 전체를 물고기가 헤엄친다. 클릭은 모두 뒤쪽 앱으로 넘긴다.
 # 조작은 메뉴 막대 아이콘(StatusIndicator)의 메뉴로 한다.
-# 물고기는 저장 파일의 마릿수(최소 1)만큼 넣는다. 저장은 메뉴 설정(SaveData "screen")만 바꿔 쓴다.
+# 물고기는 저장 파일의 마릿수(최소 1)만큼 화면 아무 곳에 넣는다. 최대 마릿수와 추가·제거도 여기서 관리한다.
+
+signal fish_count_changed(count: int)
 
 enum MenuItem { ALWAYS_ON_TOP, FISH_VISIBLE, QUIT }
 
+const MAX_FISH := 5
+
 @export var fish_scene: PackedScene
 
-var data: Dictionary  # 불러온 저장 내용. 다른 항목은 그대로 두고 "screen"만 바꿔 다시 쓴다.
+var data: Dictionary  # 불러온 저장 내용. 메뉴 설정과 물고기 목록을 바꿔 다시 쓴다.
+var water := Rect2()  # 물고기 헤엄 영역(창 전체)
+var fish_count := 0
 
 @onready var fishes: Node2D = $Fishes
 @onready var menu: PopupMenu = $StatusIndicator/Menu
@@ -30,9 +36,9 @@ func _ready() -> void:
 	DisplayServer.window_set_mouse_passthrough(PackedVector2Array([Vector2.ZERO, Vector2.ZERO, Vector2.ZERO]))
 
 	data = SaveData.load_data()
-	var water := Rect2(Vector2.ZERO, usable.size)
+	water = Rect2(Vector2.ZERO, usable.size)
 	for i in maxi(data["fish"].size(), 1):
-		_add_fish(water)
+		add_fish()
 
 	menu.add_check_item("항상 위에 표시", MenuItem.ALWAYS_ON_TOP)
 	menu.add_check_item("물고기 보이기", MenuItem.FISH_VISIBLE)
@@ -49,13 +55,39 @@ func _notification(what: int) -> void:
 		_save()
 
 
-func _add_fish(water: Rect2) -> void:
+# 생성 경로를 한곳으로 모아 최대 마릿수를 지킨다. 화면 아무 곳에 넣는다.
+func add_fish() -> bool:
+	if fish_count >= MAX_FISH:
+		return false
 	var fish := fish_scene.instantiate() as Fish
 	fish.water = water
-	fish.corner_radius = 0.0
 	var area := water.grow(-Fish.EDGE_MARGIN).grow_individual(-Fish.SIZE.x / 2, -Fish.SIZE.y / 2, -Fish.SIZE.x / 2, -Fish.SIZE.y / 2)
 	fish.position = Vector2(randf_range(area.position.x, area.end.x), randf_range(area.position.y, area.end.y)).floor()
 	fishes.add_child(fish)
+	fish_count += 1
+	fish_count_changed.emit(fish_count)
+	return true
+
+
+# 가장 나중에 넣은 물고기를 뺀다. 마지막 한 마리를 남기는 규칙은 상점(ShopPanel)이 지킨다.
+func remove_fish() -> bool:
+	if fish_count == 0:
+		return false
+	var fish := fishes.get_child(fishes.get_child_count() - 1)
+	# queue_free()만 하면 이번 프레임의 저장(fish_states)에 남으므로 먼저 떼어 낸다.
+	fishes.remove_child(fish)
+	fish.queue_free()
+	fish_count -= 1
+	fish_count_changed.emit(fish_count)
+	return true
+
+
+# 저장용 물고기 목록. 지금은 금붕어 한 종류뿐이다.
+func fish_states() -> Array:
+	var states := []
+	for fish: Node2D in fishes.get_children():
+		states.append({"kind": "goldfish", "x": fish.position.x, "y": fish.position.y})
+	return states
 
 
 func _on_menu_id_pressed(id: int) -> void:
@@ -87,4 +119,5 @@ func _set_fish_visible(shown: bool) -> void:
 
 
 func _save() -> void:
+	data["fish"] = fish_states()
 	SaveData.save(data)

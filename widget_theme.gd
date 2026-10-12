@@ -1,19 +1,17 @@
 class_name WidgetTheme
 extends RefCounted
 
-# 기본 화면·상점 패널 컨트롤의 색·테두리·글꼴. 수치는 OpenDesign 기본 화면·상점 시안(DESIGN.md)을 따른다(Godot 픽셀 기준).
+# 상점 패널 컨트롤의 색·테두리·글꼴. 수치는 OpenDesign 기본 화면·상점 시안(DESIGN.md)을 따른다(Godot 픽셀 기준).
 
 const SURFACE := Color("f9feff")  # 컨트롤 바탕
-const FG := Color("223543")  # 글자·아이콘, 항상 위 켬 바탕, 말풍선 바탕
-const FG_HOVER := Color("3a4d5c")
+const FG := Color("223543")  # 글자·아이콘, 말풍선 바탕
 const HOVER := Color("d6edf2")  # 흰 컨트롤 마우스 올림 바탕
-const GLASS_LINE := Color("485968")  # 모든 컨트롤 테두리(유리 바깥선과 같은 색)
+const GLASS_LINE := Color("485968")  # 패널·버튼 바깥 테두리
 const ACCENT := Color("7555a8")  # 연보라. 상점의 구매 버튼과 선택한 상품에만 쓴다.
 const ACCENT_HOVER := Color("5f3d8e")
 const ACCENT_SHADOW := Color("4e2f80")  # 구매 버튼 아래 단단한 그림자
 const ACCENT_SOFT := Color("f1ebff")  # 선택한 상품 칸 바탕
-const WARN := Color("a8372a")  # 닫기 마우스 올림
-const WARN_HOVER := Color("8f2a1f")
+const WARN := Color("a8372a")  # 막힌 이유·가득 참 표시
 const DISABLED_BG := Color("e1e7ea")
 const DISABLED_FG := Color("8b979d")
 const SHADOW := Color(FG, 0.22)
@@ -57,29 +55,9 @@ static func build() -> Theme:
 	theme.set_constant("h_separation", "Button", 8)
 	theme.set_constant("icon_max_width", "Button", 22)
 
-	# 아이콘만 있는 40×40 버튼(항상 위·닫기)
+	# 아이콘만 있는 버튼. 상점 닫기(PanelIconButton)의 바탕이다.
 	theme.set_type_variation("IconButton", "Button")
 	_set_button_boxes(theme, "IconButton", SURFACE, HOVER, SURFACE, ICON_RADIUS, 0, 0)
-
-	# 항상 위: 켜면 진한 바탕에 채운 핀
-	theme.set_type_variation("PinButton", "IconButton")
-	theme.set_stylebox("pressed", "PinButton", _box(FG, FG, ICON_RADIUS, 0, 0))
-	theme.set_stylebox("hover_pressed", "PinButton", _box(FG_HOVER, FG_HOVER, ICON_RADIUS, 0, 0))
-	theme.set_color("icon_pressed_color", "PinButton", SURFACE)
-	theme.set_color("icon_hover_pressed_color", "PinButton", SURFACE)
-
-	# 닫기: 마우스를 올리면 빨간 바탕에 흰 ×
-	theme.set_type_variation("CloseButton", "IconButton")
-	theme.set_stylebox("hover", "CloseButton", _box(WARN, WARN, ICON_RADIUS, 0, 0))
-	theme.set_stylebox("pressed", "CloseButton", _pressed(_box(WARN_HOVER, WARN_HOVER, ICON_RADIUS, 0, 0)))
-	theme.set_color("icon_hover_color", "CloseButton", SURFACE)
-	theme.set_color("icon_pressed_color", "CloseButton", SURFACE)
-
-	# 손잡이(Panel). 마우스 올림은 main.gd에서 종류를 바꿔 표시한다.
-	theme.set_type_variation("DragHandle", "Panel")
-	theme.set_stylebox("panel", "DragHandle", _box(SURFACE, GLASS_LINE, RADIUS, 0, 0))
-	theme.set_type_variation("DragHandleHover", "Panel")
-	theme.set_stylebox("panel", "DragHandleHover", _box(HOVER, GLASS_LINE, RADIUS, 0, 0))
 
 	_add_shop_types(theme)
 
