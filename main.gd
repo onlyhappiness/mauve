@@ -3,7 +3,7 @@ extends Node2D
 const CLICK_ARC_STEPS := 8  # 클릭 영역의 둥근 모서리 하나를 나누는 선분 수
 const PIN_ICON := preload("res://assets/ui/pin.svg")
 const PIN_FILLED_ICON := preload("res://assets/ui/pin_filled.svg")
-const WINDOW_CHECK_INTERVAL := 1.0  # 창을 옮겼는지 살피는 간격(초)
+const WINDOW_CHECK_INTERVAL := 1.0  # 창을 옮겼는지 살피고 먹이 버튼의 남은 시간을 고치는 간격(초)
 
 @onready var aquarium: Aquarium = $Aquarium
 @onready var ui: Control = $UI
@@ -11,12 +11,17 @@ const WINDOW_CHECK_INTERVAL := 1.0  # 창을 옮겼는지 살피는 간격(초)
 @onready var always_on_top_button: Button = $UI/AlwaysOnTopButton
 @onready var close_button: Button = $UI/CloseButton
 @onready var dock: HBoxContainer = $UI/Dock
+@onready var feed_button: Button = $UI/Dock/FeedButton
 @onready var shop_button: Button = $UI/Dock/ShopButton
 @onready var shop_panel: ShopPanel = $UI/ShopPanel
 
 var saved_window_position := Vector2i.ZERO  # 마지막으로 저장한 창 위치
 var checked_window_position := Vector2i.ZERO  # 직전에 살펴본 창 위치
 var save_pending := false  # 마지막 저장이 실패해 다시 시도해야 하는지
+var care: CareRewards
+var pending_reward := 0  # 기회를 쓰고 먹이를 준 뒤, 먹기가 끝나면 줄 진주
+var reward_label: Label
+var reward_tween: Tween
 
 
 func _ready() -> void:
@@ -25,11 +30,20 @@ func _ready() -> void:
 		aquarium.add_fish(Vector2(fish["x"], fish["y"]))
 	always_on_top_button.set_pressed_no_signal(data["always_on_top"])
 	shop_panel.setup(aquarium, data["pearls"])
+	care = CareRewards.from_dict(data["care"], CareRewards.now())
 
 	ui.theme = WidgetTheme.build()
 	close_button.pressed.connect(_on_close_button_pressed)
 	shop_button.pressed.connect(_set_shop_open.bind(true))
 	shop_panel.closed.connect(_set_shop_open.bind(false))
+	feed_button.pressed.connect(_feed)
+	aquarium.feeding_finished.connect(_on_feeding_finished)
+	reward_label = Label.new()
+	reward_label.theme_type_variation = &"DeltaLabel"
+	reward_label.modulate.a = 0.0
+	reward_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ui.add_child(reward_label)
+	_update_feed_button()
 	always_on_top_button.toggled.connect(_set_always_on_top)
 	_set_always_on_top(always_on_top_button.button_pressed)
 	drag_handle.gui_input.connect(_on_drag_handle_gui_input)
@@ -47,6 +61,7 @@ func _ready() -> void:
 	var window_check := Timer.new()
 	window_check.wait_time = WINDOW_CHECK_INTERVAL
 	window_check.timeout.connect(_check_window_moved)
+	window_check.timeout.connect(_update_feed_button)
 	add_child(window_check)
 	window_check.start()
 
@@ -54,6 +69,7 @@ func _ready() -> void:
 # Cmd+Q 등으로 창을 닫을 때도 저장한다.
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		_pay_reward()
 		_save()
 
 
@@ -61,6 +77,7 @@ func _save() -> void:
 	var window_position := DisplayServer.window_get_position()
 	var saved := SaveData.save({
 		"pearls": shop_panel.pearls,
+		"care": care.to_dict(),
 		"always_on_top": always_on_top_button.button_pressed,
 		"window": {"x": window_position.x, "y": window_position.y},
 		"fish": aquarium.fish_states(),
@@ -118,7 +135,7 @@ func _update_click_area() -> void:
 	if shop_panel.visible:
 		DisplayServer.window_set_mouse_passthrough(_click_area(shop_panel.get_rect(), ShopPanel.RADIUS, drag_handle.get_rect(), top_buttons, Rect2()))
 		return
-	var bottom_buttons := shop_button.get_global_rect()
+	var bottom_buttons := feed_button.get_global_rect().merge(shop_button.get_global_rect())
 	bottom_buttons.size.y += WidgetTheme.SHADOW_OFFSET
 	DisplayServer.window_set_mouse_passthrough(_click_area(Aquarium.TANK_RECT, Aquarium.CORNER_RADIUS, drag_handle.get_rect(), top_buttons, bottom_buttons))
 
@@ -126,7 +143,7 @@ func _update_click_area() -> void:
 # 어항과 바깥 여백의 컨트롤만 클릭을 받고, 나머지 투명 여백의 클릭은 뒤쪽 앱으로 넘긴다.
 # 투명 창에서는 이 영역을 지정하지 않으면 어항 위의 클릭도 뒤로 빠진다(macOS에서 확인).
 # 다각형은 하나만 지정할 수 있어서, 둥근 어항 외곽에 컨트롤 자리가 탭처럼 튀어나온 모양으로 잇는다.
-# 위: 가운데 손잡이, 오른쪽 위 버튼(항상 위·닫기). 아래: 오른쪽 버튼 묶음(상점). 크기가 없으면 아래 탭은 넣지 않는다.
+# 위: 가운데 손잡이, 오른쪽 위 버튼(항상 위·닫기). 아래: 오른쪽 버튼 묶음(먹이·상점). 크기가 없으면 아래 탭은 넣지 않는다.
 # 상점을 열면 어항 대신 상점 패널 외곽(모서리 28)에 같은 위쪽 탭을 붙인다.
 # 오른쪽 탭은 어항 둥근 모서리 위·아래에 걸치므로, 탭 끝에서 모서리 호의 시작·끝점으로 바로 이어
 # 모서리 바깥 투명 부분은 클릭을 받지 않게 한다.
@@ -181,5 +198,78 @@ func _set_always_on_top(enabled: bool) -> void:
 
 
 func _on_close_button_pressed() -> void:
+	_pay_reward()
 	_save()
 	get_tree().quit()
+
+
+# 먹이는 언제든 줄 수 있다. 보상 기회가 있으면 하나 쓰고, 지금 있는 물고기 기준으로 보상을 정해 둔다.
+# 먹는 동안에는 버튼을 막아 연속 클릭으로 기회를 여러 번 쓰지 않게 한다.
+func _feed() -> void:
+	if not aquarium.feed():
+		return
+	if care.use(CareRewards.now()):
+		pending_reward = CareRewards.reward_for(aquarium.fish_states())
+		_save()
+	_update_feed_button()
+
+
+# 먹기가 끝나면 정해 둔 보상을 준다. 먹는 중에 물고기를 팔아도 보상은 줄지 않는다.
+func _on_feeding_finished() -> void:
+	_pay_reward()
+	_update_feed_button()
+
+
+# 종료할 때도 먹기가 끝나기를 기다리지 않고 바로 준다.
+func _pay_reward() -> void:
+	if pending_reward == 0:
+		return
+	var amount := pending_reward
+	pending_reward = 0
+	shop_panel.add_pearls(amount)  # 상점이 저장을 요청한다
+	if not shop_panel.visible:
+		_show_reward(amount)
+
+
+# 먹이 버튼 위쪽 물속에 받은 진주를 잠깐 띄운다. 바로 위는 모래와 유리라 글자가 묻혀 조금 더 올린다.
+func _show_reward(amount: int) -> void:
+	reward_label.text = "진주 +%d" % amount
+	reward_label.reset_size()
+	var button := feed_button.get_global_rect()
+	var top := button.position.y - reward_label.size.y - 40.0
+	reward_label.position = Vector2(button.get_center().x - reward_label.size.x / 2.0, top + 8.0)
+	reward_label.modulate.a = 0.0
+	if reward_tween:
+		reward_tween.kill()
+	reward_tween = create_tween()
+	reward_tween.tween_property(reward_label, "modulate:a", 1.0, 0.2)
+	reward_tween.parallel().tween_property(reward_label, "position:y", top, 0.2)
+	reward_tween.tween_interval(1.2)
+	reward_tween.tween_property(reward_label, "modulate:a", 0.0, 0.4)
+
+
+# 기회가 있으면 「먹이 n/3」, 없으면 다음 기회까지 남은 시간을 보여 준다.
+func _update_feed_button() -> void:
+	var now := CareRewards.now()
+	feed_button.disabled = aquarium.feeding
+	if aquarium.feeding:
+		feed_button.text = "먹는 중"
+		feed_button.tooltip_text = ""
+		return
+	var left := care.seconds_left(now)
+	if care.chances > 0:
+		feed_button.text = "먹이 %d/%d" % [care.chances, CareRewards.MAX_CHANCES]
+		feed_button.tooltip_text = "먹이를 주면 진주를 받아요"
+	else:
+		feed_button.text = "먹이 %d:%02d" % [left / 60, left % 60]
+		feed_button.tooltip_text = "지금은 보상 없이 먹이만 줄 수 있어요"
+
+
+# 디버그 실행에서 C 키를 누르면 보상 기회를 하나 더한다(D10 확인용).
+func _unhandled_key_input(event: InputEvent) -> void:
+	var key := event as InputEventKey
+	if OS.is_debug_build() and key and key.pressed and not key.echo and key.keycode == KEY_C:
+		care.chances = mini(care.chances + 1, CareRewards.MAX_CHANCES)
+		care.update(CareRewards.now())
+		_update_feed_button()
+		_save()

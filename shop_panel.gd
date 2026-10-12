@@ -60,6 +60,15 @@ func setup(target: Aquarium, start_pearls: int) -> void:
 	_refresh()
 
 
+# 먹이 보상처럼 상점 밖에서 받은 진주. 패널이 열려 있으면 칩 옆에 받은 양을 띄운다.
+func add_pearls(amount: int) -> void:
+	pearls += amount
+	if visible:
+		_flash(amount)
+	_refresh()
+	changed.emit()
+
+
 func open() -> void:
 	note = ""
 	_refresh()

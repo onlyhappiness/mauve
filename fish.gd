@@ -1,3 +1,4 @@
+class_name Fish
 extends Node2D
 
 # 꼬리를 포함한 최대 크기. 원점(0, 0)이 물고기의 중심이고 오른쪽을 바라본다.
@@ -15,12 +16,17 @@ const REST_TIME_MIN := 1.0
 const REST_TIME_MAX := 3.0
 const TURN_SPEED := 5.0  # 방향을 바꿀 때 Visual.scale.x가 1초에 변하는 양
 const EDGE_MARGIN := 4.0  # 유리·모래에 딱 붙지 않게 두는 여유
+const CHASE_SPEED := 95.0  # 먹이를 쫓을 때 속도
+const MOUTH_OFFSET := 36.0  # 몸 중심에서 입까지 가로 거리. 입이 먹이에 닿으면 먹는다.
+const EAT_DISTANCE := 4.0
+const AFTER_EAT_REST := 0.6
 
 # 개체마다 따로 갖는 이동 상태
 var target := Vector2.ZERO
 var speed := 0.0
 var rest_left := 0.0
 var facing := 1.0  # 1이면 오른쪽, -1이면 왼쪽
+var food: Food = null  # 맡은 먹이. 있으면 평소 헤엄 대신 먹이를 쫓는다.
 
 @onready var visual: Node2D = $Visual
 @onready var sprite: Sprite2D = $Visual/Sprite2D
@@ -39,7 +45,11 @@ func _fit_sprite_to_size() -> void:
 
 
 func _process(delta: float) -> void:
-	if rest_left > 0.0:
+	if food != null and not is_instance_valid(food):
+		food = null
+	if food != null:
+		_chase(delta)
+	elif rest_left > 0.0:
 		rest_left -= delta
 		if rest_left <= 0.0:
 			_pick_target()
@@ -52,6 +62,21 @@ func _process(delta: float) -> void:
 	if is_zero_approx(next_scale):
 		next_scale = facing * 0.01
 	visual.scale.x = next_scale
+
+
+# 입이 먹이에 닿는 자리로 헤엄친다. 그 자리가 물 밖이면 먹이 위치로 간다(먹이는 물 안쪽에만 떨어진다).
+func _chase(delta: float) -> void:
+	var dx := food.position.x - position.x
+	if absf(dx) > MOUTH_OFFSET:
+		facing = signf(dx)
+	var mouth_target := food.position - Vector2(facing * MOUTH_OFFSET, 0.0)
+	if not _fits_in_water(mouth_target):
+		mouth_target = food.position
+	position = position.move_toward(mouth_target, CHASE_SPEED * delta)
+	if position.distance_to(mouth_target) < EAT_DISTANCE:
+		food.queue_free()
+		food = null
+		rest_left = AFTER_EAT_REST
 
 
 func _swim(delta: float) -> void:

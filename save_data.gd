@@ -1,9 +1,11 @@
 class_name SaveData
 extends RefCounted
 
-# 진주·물고기 목록·창 위치·항상 위 설정을 JSON 파일 하나에 저장하고 불러온다.
+# 진주·먹이 보상 기회·물고기 목록·창 위치·항상 위 설정을 JSON 파일 하나에 저장하고 불러온다.
 # 저장 형식(VERSION 1):
-# {"version": 1, "pearls": 100, "always_on_top": false, "window": {"x": 0, "y": 0}, "fish": [{"kind": "goldfish", "x": 360, "y": 270}]}
+# {"version": 1, "pearls": 100, "care": {"chances": 1, "since": 1760000000}, "always_on_top": false,
+#  "window": {"x": 0, "y": 0}, "fish": [{"kind": "goldfish", "x": 360, "y": 270}]}
+# "care"는 CareRewards가 읽는다. 없으면 기회 1회로 새로 센다.
 # "window"가 없으면 창을 기본 위치(화면 오른쪽 아래)에 둔다.
 # "pearls"가 없는 파일(상점 이전 저장)은 진주 0으로 불러온다. 시작 진주는 새로 시작할 때만 준다.
 
@@ -23,6 +25,7 @@ static func defaults() -> Dictionary:
 	return {
 		"version": VERSION,
 		"pearls": START_PEARLS,
+		"care": null,
 		"always_on_top": false,
 		"window": null,
 		"fish": [{"kind": FISH_KINDS[0], "x": 0.0, "y": 0.0}],  # 위치 (0, 0)은 어항 밖이라 가운데에서 시작한다
@@ -90,6 +93,8 @@ static func _read(path: String) -> Variant:
 	var data := defaults()
 	var pearls = parsed.get("pearls")
 	data["pearls"] = maxi(int(pearls), 0) if pearls is float else 0
+	if parsed.get("care") is Dictionary:
+		data["care"] = parsed["care"]
 	if parsed.get("always_on_top") is bool:
 		data["always_on_top"] = parsed["always_on_top"]
 
