@@ -12,7 +12,6 @@ const VERSION := 1
 const FILE_NAME := "save.json"
 const BACKUP_NAME := "save.bak.json"  # 직전에 정상이던 파일
 const TEMP_NAME := "save.tmp.json"  # 다 쓴 뒤 FILE_NAME으로 바꾼다
-const FISH_KINDS: Array[String] = ["goldfish"]
 const START_PEARLS := 100
 
 # 저장 폴더. 헤드리스 점검에서만 다른 폴더로 바꾼다.
@@ -25,7 +24,7 @@ static func defaults() -> Dictionary:
 		"version": VERSION,
 		"pearls": START_PEARLS,
 		"screen": {"always_on_top": true, "fish_visible": true},
-		"fish": [{"kind": FISH_KINDS[0], "x": 0.0, "y": 0.0}],
+		"fish": [{"kind": Catalog.START_FISH, "x": 0.0, "y": 0.0}],
 	}
 
 
@@ -98,9 +97,9 @@ static func _read(path: String) -> Variant:
 
 	var fish: Array = []
 	for item in parsed["fish"]:
-		if fish.size() >= Screen.MAX_FISH:
+		if fish.size() >= Game.MAX_FISH:
 			break
-		if item is Dictionary and item.get("kind") in FISH_KINDS:
+		if item is Dictionary and item.get("kind") is String and Catalog.is_fish_ready(item["kind"]):
 			var x = item.get("x")
 			var y = item.get("y")
 			fish.append({"kind": item["kind"], "x": x if x is float else 0.0, "y": y if y is float else 0.0})
