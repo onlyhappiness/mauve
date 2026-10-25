@@ -1,15 +1,15 @@
 class_name ShopPanel
 extends Panel
 
-# 어항을 덮는 상점 패널(어항 영역과 같은 680×510). 진주로 물고기를 사고판다.
+# 상점 패널(680×510). 진주로 물고기를 사고판다. 화면 전체 장면(Screen)에 연결하는 일은 D18이다.
 # 배치·색은 OpenDesign 상점 시안(DESIGN.md)을 따르고, 안쪽 노드는 _build()에서 코드로 만든다.
-# 수초·어항 탭은 D08·D09 범위라 아직 고를 수 없다.
+# 수초 탭은 D18 범위라 아직 고를 수 없다.
 
-signal changed  # 진주나 물고기 수가 바뀌었다. Main이 저장한다.
+signal changed  # 진주나 물고기 수가 바뀌었다. 연결한 장면이 저장한다.
 signal closed
 
 const CLOSE_ICON := preload("res://assets/ui/close.svg")
-const RADIUS := 28  # 패널 바깥 모서리. Main의 클릭 영역도 이 값을 쓴다.
+const RADIUS := 28  # 패널 바깥 모서리
 const PADDING := 24  # 바깥 테두리 4 + 안쪽 여백 20
 const DEV_PEARLS := 100  # 디버그 실행에서 상점을 연 채 P 키를 누르면 받는 진주(D07 확인용)
 
@@ -23,7 +23,7 @@ const ITEMS: Array[Dictionary] = [
 	{"name": "우파루파", "price": 240, "texture": null, "description": "늘 웃는 얼굴로 바닥을 거닐어요."},
 ]
 
-var aquarium: Aquarium
+var screen: Screen
 var pearls := 0
 var selected := 0  # ITEMS 위치
 var note := ""  # 방금 사고판 결과 문구. 다른 상품을 고르면 지운다.
@@ -52,11 +52,11 @@ func _ready() -> void:
 	_build()
 
 
-# Main이 불러온 진주와 어항을 넘겨준다.
-func setup(target: Aquarium, start_pearls: int) -> void:
-	aquarium = target
+# 불러온 진주와 물고기를 가진 장면을 넘겨준다.
+func setup(target: Screen, start_pearls: int) -> void:
+	screen = target
 	pearls = start_pearls
-	aquarium.fish_count_changed.connect(_refresh.unbind(1))
+	screen.fish_count_changed.connect(_refresh.unbind(1))
 	_refresh()
 
 
@@ -89,7 +89,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 
 func _buy() -> void:
 	var item := ITEMS[selected]
-	if _buy_block(item) != "" or not aquarium.add_fish():
+	if _buy_block(item) != "" or not screen.add_fish():
 		return
 	pearls -= item["price"]
 	note = "%s 샀어요" % _with_object_particle(item["name"])
@@ -100,7 +100,7 @@ func _buy() -> void:
 
 func _sell() -> void:
 	var item := ITEMS[selected]
-	if _sell_block(item) != "" or not aquarium.remove_fish():
+	if _sell_block(item) != "" or not screen.remove_fish():
 		return
 	pearls += _sell_price_of(item)
 	note = "%s 팔았어요" % _with_object_particle(item["name"])
@@ -118,8 +118,8 @@ func _select(index: int) -> void:
 func _buy_block(item: Dictionary) -> String:
 	if item["texture"] == null:
 		return "아직 준비 중이에요"
-	if aquarium.fish_count >= Aquarium.MAX_FISH:
-		return "물고기가 가득 찼어요 (%d/%d)" % [Aquarium.MAX_FISH, Aquarium.MAX_FISH]
+	if screen.fish_count >= Screen.MAX_FISH:
+		return "물고기가 가득 찼어요 (%d/%d)" % [Screen.MAX_FISH, Screen.MAX_FISH]
 	if pearls < item["price"]:
 		return "진주가 %d개 부족해요" % (item["price"] - pearls)
 	return ""
@@ -129,14 +129,14 @@ func _buy_block(item: Dictionary) -> String:
 func _sell_block(item: Dictionary) -> String:
 	if _owned_count(item) == 0:
 		return "가지고 있지 않아요"
-	if aquarium.fish_count <= 1:
+	if screen.fish_count <= 1:
 		return "마지막 한 마리는 팔 수 없어요"
 	return ""
 
 
 # 지금 어항에 넣을 수 있는 물고기는 금붕어뿐이라, 살 수 있는 상품의 보유 수는 어항의 마릿수와 같다.
 func _owned_count(item: Dictionary) -> int:
-	return aquarium.fish_count if item["texture"] != null else 0
+	return screen.fish_count if item["texture"] != null else 0
 
 
 func _sell_price_of(item: Dictionary) -> int:
@@ -151,11 +151,11 @@ func _with_object_particle(word: String) -> String:
 
 
 func _refresh() -> void:
-	if aquarium == null:
+	if screen == null:
 		return
 	_amount.text = str(pearls)
-	var full := aquarium.fish_count >= Aquarium.MAX_FISH
-	_fish_count.text = "%d/%d" % [aquarium.fish_count, Aquarium.MAX_FISH]
+	var full := screen.fish_count >= Screen.MAX_FISH
+	_fish_count.text = "%d/%d" % [screen.fish_count, Screen.MAX_FISH]
 	_fish_count.add_theme_color_override("font_color", WidgetTheme.WARN if full else WidgetTheme.MUTED)
 
 	for i in ITEMS.size():

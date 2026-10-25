@@ -2,7 +2,7 @@ class_name Fish
 extends Node2D
 
 # 꼬리를 포함한 최대 크기. 원점(0, 0)이 물고기의 중심이고 오른쪽을 바라본다.
-# 이미지는 이 크기 안에 맞춰 표시하고, 어항 이탈 검사도 이 크기를 기준으로 한다.
+# 이미지는 이 크기 안에 맞춰 표시하고, 헤엄 영역 검사도 이 크기를 기준으로 한다.
 const SIZE := Vector2(90, 55)
 
 # 헤엄 설정. 길이는 픽셀, 시간은 초 단위.
@@ -15,16 +15,14 @@ const REST_CHANCE := 0.35
 const REST_TIME_MIN := 1.0
 const REST_TIME_MAX := 3.0
 const TURN_SPEED := 5.0  # 방향을 바꿀 때 Visual.scale.x가 1초에 변하는 양
-const EDGE_MARGIN := 4.0  # 유리·모래에 딱 붙지 않게 두는 여유
+const EDGE_MARGIN := 4.0  # 헤엄 영역 가장자리에 딱 붙지 않게 두는 여유
 
 # 개체마다 따로 갖는 이동 상태
 var target := Vector2.ZERO
 var speed := 0.0
 var rest_left := 0.0
 var facing := 1.0  # 1이면 오른쪽, -1이면 왼쪽
-# 헤엄 영역과 모서리 반경. 기본은 어항이고, 화면 전체 장면(Screen)은 넣기 전에 바꾼다.
-var water := Aquarium.swim_area()
-var corner_radius := float(Aquarium.SWIM_CORNER_RADIUS)
+var water := Rect2()  # 헤엄 영역. Screen이 넣기 전에 정한다.
 
 @onready var visual: Node2D = $Visual
 @onready var sprite: Sprite2D = $Visual/Sprite2D
@@ -98,20 +96,7 @@ func _water_rect() -> Rect2:
 	return water.grow(-EDGE_MARGIN)
 
 
-# 물고기 중심이 point일 때 몸 전체가 둥근 모서리까지 포함한 물 영역 안에 들어가는지 확인한다.
-# 물 영역은 볼록한 모양이라, 들어가는 두 지점 사이를 직선으로 헤엄쳐도 밖으로 나가지 않는다.
+# 물고기 중심이 point일 때 몸 전체가 헤엄 영역 안에 들어가는지 확인한다.
 func _fits_in_water(point: Vector2) -> bool:
-	var water := _water_rect()
-	var body := Rect2(point - SIZE / 2, SIZE)
-	if not water.encloses(body):
-		return false
-
-	# 둥근 모서리 원의 중심들이 이루는 사각형에서 radius 이내인 점만 물 영역이다.
-	var radius := maxf(corner_radius - EDGE_MARGIN, 0.0)
-	var centers := water.grow(-radius)
-	var corners := [body.position, Vector2(body.end.x, body.position.y), body.end, Vector2(body.position.x, body.end.y)]
-	for corner: Vector2 in corners:
-		if corner.distance_to(corner.clamp(centers.position, centers.end)) > radius:
-			return false
-	return true
+	return _water_rect().encloses(Rect2(point - SIZE / 2, SIZE))
 

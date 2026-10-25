@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://3nal5ytv1qjn"
-path="res://.godot/imported/sand.png-b539256d135cd0e97f754ce7f7f6c452.ctex"
+uid="uid://cord5s7b7kkf7"
+path="res://.godot/imported/hydrilla_2.png-1684cba90c2174ef72c81ca9484014a1.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/tank/sand.png"
-dest_files=["res://.godot/imported/sand.png-b539256d135cd0e97f754ce7f7f6c452.ctex"]
+source_file="res://assets/plants/hydrilla_2.png"
+dest_files=["res://.godot/imported/hydrilla_2.png-1684cba90c2174ef72c81ca9484014a1.ctex"]
 
 [params]
 
@@ -23,7 +23,7 @@ compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
 compress/normal_map=0
 compress/channel_pack=0
-mipmaps/generate=false
+mipmaps/generate=true
 mipmaps/limit=-1
 roughness/mode=0
 roughness/src_normal=""

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dmx1kp4n1bbaq"
-path="res://.godot/imported/grip.svg-246ff2000bb27f1c93addfb691462b59.ctex"
+uid="uid://ck2tw05qfw434"
+path="res://.godot/imported/marimo.png-81d3638a98ec50aa320744706ae467c7.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/ui/grip.svg"
-dest_files=["res://.godot/imported/grip.svg-246ff2000bb27f1c93addfb691462b59.ctex"]
+source_file="res://assets/plants/marimo.png"
+dest_files=["res://.godot/imported/marimo.png-81d3638a98ec50aa320744706ae467c7.ctex"]
 
 [params]
 
@@ -23,7 +23,7 @@ compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
 compress/normal_map=0
 compress/channel_pack=0
-mipmaps/generate=false
+mipmaps/generate=true
 mipmaps/limit=-1
 roughness/mode=0
 roughness/src_normal=""
@@ -38,6 +38,3 @@ process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
 detect_3d/compress_to=1
-svg/scale=1.0
-editor/scale_with_editor_scale=false
-editor/convert_colors_with_editor_theme=false

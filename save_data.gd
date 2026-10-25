@@ -1,12 +1,12 @@
 class_name SaveData
 extends RefCounted
 
-# 진주·물고기 목록·창 위치·항상 위 설정을 JSON 파일 하나에 저장하고 불러온다.
+# 진주·물고기 목록·메뉴 설정을 JSON 파일 하나에 저장하고 불러온다.
 # 저장 형식(VERSION 1):
-# {"version": 1, "pearls": 100, "always_on_top": false, "window": {"x": 0, "y": 0}, "fish": [{"kind": "goldfish", "x": 360, "y": 270}]}
-# "window"가 없으면 창을 기본 위치(화면 오른쪽 아래)에 둔다.
+# {"version": 1, "pearls": 100, "screen": {"always_on_top": true, "fish_visible": true}, "fish": [{"kind": "goldfish", "x": 360, "y": 270}]}
 # "pearls"가 없는 파일(상점 이전 저장)은 진주 0으로 불러온다. 시작 진주는 새로 시작할 때만 준다.
-# "screen"은 화면 전체 장면(Screen)의 설정이다: {"always_on_top": true, "fish_visible": true}. 없으면 둘 다 켠다.
+# "screen"이 없으면 메뉴 설정을 모두 켠다. 어항 위젯 시절의 "always_on_top"·"window"는 읽지 않는다.
+# 물고기 위치는 기록만 하고, 시작할 때는 화면 아무 곳에 다시 놓는다.
 
 const VERSION := 1
 const FILE_NAME := "save.json"
@@ -24,10 +24,8 @@ static func defaults() -> Dictionary:
 	return {
 		"version": VERSION,
 		"pearls": START_PEARLS,
-		"always_on_top": false,
-		"window": null,
 		"screen": {"always_on_top": true, "fish_visible": true},
-		"fish": [{"kind": FISH_KINDS[0], "x": 0.0, "y": 0.0}],  # 위치 (0, 0)은 어항 밖이라 가운데에서 시작한다
+		"fish": [{"kind": FISH_KINDS[0], "x": 0.0, "y": 0.0}],
 	}
 
 
@@ -92,25 +90,17 @@ static func _read(path: String) -> Variant:
 	var data := defaults()
 	var pearls = parsed.get("pearls")
 	data["pearls"] = maxi(int(pearls), 0) if pearls is float else 0
-	if parsed.get("always_on_top") is bool:
-		data["always_on_top"] = parsed["always_on_top"]
-
 	var screen = parsed.get("screen")
 	if screen is Dictionary:
 		for key: String in data["screen"]:
 			if screen.get(key) is bool:
 				data["screen"][key] = screen[key]
 
-	var window = parsed.get("window")
-	if window is Dictionary and window.get("x") is float and window.get("y") is float:
-		data["window"] = {"x": int(window["x"]), "y": int(window["y"])}
-
 	var fish: Array = []
 	for item in parsed["fish"]:
-		if fish.size() >= Aquarium.MAX_FISH:
+		if fish.size() >= Screen.MAX_FISH:
 			break
 		if item is Dictionary and item.get("kind") in FISH_KINDS:
-			# 위치가 없거나 어항 밖이면 Aquarium.add_fish()가 가운데에 둔다.
 			var x = item.get("x")
 			var y = item.get("y")
 			fish.append({"kind": item["kind"], "x": x if x is float else 0.0, "y": y if y is float else 0.0})

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dq5gd4ot4a2ua"
-path="res://.godot/imported/glass.png-bf39017aa95657f8efdd5cb104f6a276.ctex"
+uid="uid://qvjxkc43ld82"
+path="res://.godot/imported/myriophyllum_0.png-78eebbdcee456e365344dab294eb1565.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/tank/glass.png"
-dest_files=["res://.godot/imported/glass.png-bf39017aa95657f8efdd5cb104f6a276.ctex"]
+source_file="res://assets/plants/myriophyllum_0.png"
+dest_files=["res://.godot/imported/myriophyllum_0.png-78eebbdcee456e365344dab294eb1565.ctex"]
 
 [params]
 
@@ -23,7 +23,7 @@ compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
 compress/normal_map=0
 compress/channel_pack=0
-mipmaps/generate=false
+mipmaps/generate=true
 mipmaps/limit=-1
 roughness/mode=0
 roughness/src_normal=""

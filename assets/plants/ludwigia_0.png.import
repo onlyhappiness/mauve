@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dc4aeokqj3d4h"
-path="res://.godot/imported/shop.svg-840e9adfcd79f5a5215e30208836728f.ctex"
+uid="uid://bjfeme2qjw3ue"
+path="res://.godot/imported/ludwigia_0.png-6ce2bc2d0178645ab17ed27da66c6757.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/ui/shop.svg"
-dest_files=["res://.godot/imported/shop.svg-840e9adfcd79f5a5215e30208836728f.ctex"]
+source_file="res://assets/plants/ludwigia_0.png"
+dest_files=["res://.godot/imported/ludwigia_0.png-6ce2bc2d0178645ab17ed27da66c6757.ctex"]
 
 [params]
 
@@ -23,7 +23,7 @@ compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
 compress/normal_map=0
 compress/channel_pack=0
-mipmaps/generate=false
+mipmaps/generate=true
 mipmaps/limit=-1
 roughness/mode=0
 roughness/src_normal=""
@@ -38,6 +38,3 @@ process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
 detect_3d/compress_to=1
-svg/scale=1.0
-editor/scale_with_editor_scale=false
-editor/convert_colors_with_editor_theme=false
