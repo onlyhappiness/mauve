@@ -2,10 +2,10 @@ class_name ShopPanel
 extends Panel
 
 # 상점 패널(680×510). 진주로 물고기를 사고판다. 화면 전체 장면(Screen)에 연결하는 일은 D18이다.
+# 진주·물고기는 Game 함수로 바꾸고, Game 시그널을 받아 다시 그린다. 상품 목록은 Catalog.FISH 순서를 따른다.
 # 배치·색은 OpenDesign 상점 시안(DESIGN.md)을 따르고, 안쪽 노드는 _build()에서 코드로 만든다.
 # 수초 탭은 D18 범위라 아직 고를 수 없다.
 
-signal changed  # 진주나 물고기 수가 바뀌었다. 연결한 장면이 저장한다.
 signal closed
 
 const CLOSE_ICON := preload("res://assets/ui/close.svg")
@@ -13,19 +13,8 @@ const RADIUS := 28  # 패널 바깥 모서리
 const PADDING := 24  # 바깥 테두리 4 + 안쪽 여백 20
 const DEV_PEARLS := 100  # 디버그 실행에서 상점을 연 채 P 키를 누르면 받는 진주(D07 확인용)
 
-# 상품 목록. texture가 null이면 아직 에셋이 없어 「준비 중」으로 보여 주고 살 수 없다.
-# 가격·순서는 PRD.md의 「수중 생물 목록과 가격·보상」을 따르고, 판매가는 구매가의 절반(내림)이다.
-const ITEMS: Array[Dictionary] = [
-	{"name": "금붕어", "price": 120, "texture": preload("res://assets/fish/goldfish.png"),
-		"description": "잘 먹고 잘 크는 어항의 터줏대감."},
-	{"name": "미니 복어", "price": 80, "texture": null, "description": "깜짝 놀라면 동그랗게 부풀어요."},
-	{"name": "해파리", "price": 160, "texture": null, "description": "물결을 따라 느긋하게 떠다녀요."},
-	{"name": "우파루파", "price": 240, "texture": null, "description": "늘 웃는 얼굴로 바닥을 거닐어요."},
-]
-
-var screen: Screen
-var pearls := 0
-var selected := 0  # ITEMS 위치
+var kinds: Array = Catalog.FISH.keys()  # 상품 칸 순서대로 종류 id
+var selected := 0  # kinds 위치
 var note := ""  # 방금 사고판 결과 문구. 다른 상품을 고르면 지운다.
 
 var _cards: Array[Button] = []
@@ -36,7 +25,7 @@ var _delta: Label
 var _delta_tween: Tween
 var _fish_count: Label
 var _detail_thumb: Control
-var _detail_thumb_index := -1  # _detail_thumb가 그리고 있는 ITEMS 위치
+var _detail_thumb_index := -1  # _detail_thumb가 그리고 있는 kinds 위치
 var _detail_name: Label
 var _description: Label
 var _buy_price: Label
@@ -50,13 +39,9 @@ var _sell_button: Button
 func _ready() -> void:
 	theme_type_variation = &"ShopPanelBox"
 	_build()
-
-
-# 불러온 진주와 물고기를 가진 장면을 넘겨준다.
-func setup(target: Screen, start_pearls: int) -> void:
-	screen = target
-	pearls = start_pearls
-	screen.fish_count_changed.connect(_refresh.unbind(1))
+	Game.pearls_changed.connect(_refresh.unbind(1))
+	Game.fish_added.connect(_refresh.unbind(1))
+	Game.fish_removed.connect(_refresh.unbind(1))
 	_refresh()
 
 
@@ -81,32 +66,30 @@ func _draw() -> void:
 func _unhandled_key_input(event: InputEvent) -> void:
 	var key := event as InputEventKey
 	if visible and OS.is_debug_build() and key and key.pressed and not key.echo and key.keycode == KEY_P:
-		pearls += DEV_PEARLS
+		Game.add_pearls(DEV_PEARLS)
 		_flash(DEV_PEARLS)
-		_refresh()
-		changed.emit()
 
 
 func _buy() -> void:
-	var item := ITEMS[selected]
-	if _buy_block(item) != "" or not screen.add_fish():
+	var kind: String = kinds[selected]
+	var item: Dictionary = Catalog.FISH[kind]
+	if _buy_block(kind) != "" or not Game.add_fish(kind):
 		return
-	pearls -= item["price"]
+	Game.spend_pearls(item["price"])
 	note = "%s 샀어요" % _with_object_particle(item["name"])
 	_flash(-item["price"])
 	_refresh()
-	changed.emit()
 
 
 func _sell() -> void:
-	var item := ITEMS[selected]
-	if _sell_block(item) != "" or not screen.remove_fish():
+	var kind: String = kinds[selected]
+	var item: Dictionary = Catalog.FISH[kind]
+	if _sell_block(kind) != "" or not Game.remove_fish(kind):
 		return
-	pearls += _sell_price_of(item)
+	Game.add_pearls(_sell_price_of(item))
 	note = "%s 팔았어요" % _with_object_particle(item["name"])
 	_flash(_sell_price_of(item))
 	_refresh()
-	changed.emit()
 
 
 func _select(index: int) -> void:
@@ -115,28 +98,24 @@ func _select(index: int) -> void:
 	_refresh()
 
 
-func _buy_block(item: Dictionary) -> String:
-	if item["texture"] == null:
+func _buy_block(kind: String) -> String:
+	var item: Dictionary = Catalog.FISH[kind]
+	if not Catalog.is_fish_ready(kind):
 		return "아직 준비 중이에요"
-	if screen.fish_count >= Screen.MAX_FISH:
-		return "물고기가 가득 찼어요 (%d/%d)" % [Screen.MAX_FISH, Screen.MAX_FISH]
-	if pearls < item["price"]:
-		return "진주가 %d개 부족해요" % (item["price"] - pearls)
+	if Game.fish_count() >= Game.MAX_FISH:
+		return "물고기가 가득 찼어요 (%d/%d)" % [Game.MAX_FISH, Game.MAX_FISH]
+	if Game.pearls < item["price"]:
+		return "진주가 %d개 부족해요" % (item["price"] - Game.pearls)
 	return ""
 
 
 # 어항이 비지 않도록 마지막 한 마리는 팔 수 없다.
-func _sell_block(item: Dictionary) -> String:
-	if _owned_count(item) == 0:
+func _sell_block(kind: String) -> String:
+	if Game.count_fish(kind) == 0:
 		return "가지고 있지 않아요"
-	if screen.fish_count <= 1:
+	if Game.fish_count() <= 1:
 		return "마지막 한 마리는 팔 수 없어요"
 	return ""
-
-
-# 지금 어항에 넣을 수 있는 물고기는 금붕어뿐이라, 살 수 있는 상품의 보유 수는 어항의 마릿수와 같다.
-func _owned_count(item: Dictionary) -> int:
-	return screen.fish_count if item["texture"] != null else 0
 
 
 func _sell_price_of(item: Dictionary) -> int:
@@ -151,20 +130,19 @@ func _with_object_particle(word: String) -> String:
 
 
 func _refresh() -> void:
-	if screen == null:
-		return
-	_amount.text = str(pearls)
-	var full := screen.fish_count >= Screen.MAX_FISH
-	_fish_count.text = "%d/%d" % [screen.fish_count, Screen.MAX_FISH]
+	_amount.text = str(Game.pearls)
+	var full := Game.fish_count() >= Game.MAX_FISH
+	_fish_count.text = "%d/%d" % [Game.fish_count(), Game.MAX_FISH]
 	_fish_count.add_theme_color_override("font_color", WidgetTheme.WARN if full else WidgetTheme.MUTED)
 
-	for i in ITEMS.size():
+	for i in kinds.size():
 		_cards[i].theme_type_variation = &"ShopCardSelected" if i == selected else &"ShopCard"
-		var owned := _owned_count(ITEMS[i])
+		var owned := Game.count_fish(kinds[i])
 		_badges[i].text = "×%d" % owned
 		_badges[i].get_parent().visible = owned > 0
 
-	var item := ITEMS[selected]
+	var kind: String = kinds[selected]
+	var item: Dictionary = Catalog.FISH[kind]
 	if _detail_thumb_index != selected:
 		# replace_by()는 이전 그림의 자식까지 옮겨 오므로 직접 바꿔 끼운다.
 		var thumb := _thumb(item, 84, 68)
@@ -176,10 +154,10 @@ func _refresh() -> void:
 	_description.text = _keep_words(item["description"])
 	_buy_price.text = str(item["price"])
 	_sell_price.text = str(_sell_price_of(item))
-	_owned.text = "%d마리" % _owned_count(item)
+	_owned.text = "%d마리" % Game.count_fish(kind)
 
-	var buy_block := _buy_block(item)
-	var sell_block := _sell_block(item)
+	var buy_block := _buy_block(kind)
+	var sell_block := _sell_block(kind)
 	_buy_button.disabled = buy_block != ""
 	_sell_button.disabled = sell_block != ""
 	_buy_button.tooltip_text = buy_block
@@ -191,7 +169,7 @@ func _refresh() -> void:
 	elif note != "":
 		_reason.text = _keep_words(note)
 	else:
-		_reason.text = _keep_words(sell_block) if _owned_count(item) > 0 else ""
+		_reason.text = _keep_words(sell_block) if Game.count_fish(kind) > 0 else ""
 	_reason.add_theme_color_override("font_color", WidgetTheme.OK if showing_note else WidgetTheme.WARN)
 
 
@@ -331,7 +309,7 @@ func _build_list() -> Control:
 	grid.add_theme_constant_override("h_separation", 10)
 	grid.add_theme_constant_override("v_separation", 10)
 	scroll.add_child(grid)
-	for i in ITEMS.size():
+	for i in kinds.size():
 		grid.add_child(_build_card(i))
 	left.add_child(scroll)
 	return left
@@ -339,7 +317,7 @@ func _build_list() -> Control:
 
 # 상품 칸: 그림 · 이름 · 가격, 보유하면 오른쪽 위에 ×수량
 func _build_card(index: int) -> Button:
-	var item := ITEMS[index]
+	var item: Dictionary = Catalog.FISH[kinds[index]]
 	var card := Button.new()
 	card.theme_type_variation = &"ShopCard"
 	card.custom_minimum_size.y = 146
